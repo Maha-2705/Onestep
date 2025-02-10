@@ -1,9 +1,19 @@
+import 'dart:convert';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
+import 'package:http/http.dart' as http;
+import 'package:one_step/ProviderScreens/ProviderDashBoard.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter/material.dart';
 
+import '../ParentScreens/HomePage.dart';
+
 class ProviderDetailsPage extends StatefulWidget {
+  final String accessToken;
+
+  ProviderDetailsPage({required this.accessToken});
+
   @override
   _ProviderDetailsPageState createState() => _ProviderDetailsPageState();
 }
@@ -90,6 +100,11 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
     'In-home',
     'Virtual'
   ];
+
+
+  Future<void> submitForm() async {
+
+  }
 
   void _nextPage() {
     if (_currentPage < 8) {
@@ -611,7 +626,8 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
           child: Align(
             alignment: Alignment.centerRight,
             child: ElevatedButton(
-              onPressed: _nextPage,
+              onPressed: isLastPage ? submitForm : _nextPage, // Call submitForm() when it's the last page
+
               style: ButtonStyle(
                 backgroundColor: MaterialStateProperty.all(Color(0xFF65467C)),
                 foregroundColor: MaterialStateProperty.all(Colors.white),

@@ -2,9 +2,13 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:one_step/ParentScreens/DetailsPage.dart';
 import 'package:one_step/config.dart';
 import 'package:velocity_x/velocity_x.dart';
 import 'package:http/http.dart' as http;
+
+import 'package:sign_in_button/sign_in_button.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 
 import 'package:one_step/Auth/SignInPage.dart';
@@ -17,11 +21,12 @@ class SignUpPage extends StatefulWidget {
   _RegistrationState createState() => _RegistrationState();
 }
 class _RegistrationState extends State<SignUpPage> {
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
+
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
   TextEditingController nameController = TextEditingController();
 
-  bool _isNotValidate = false;
   bool _termsAccepted = false;
   bool _isParentSelected = true; // Default to 'Parent'
 
@@ -50,7 +55,7 @@ class _RegistrationState extends State<SignUpPage> {
       return;
     }
 
-    String role = _isParentSelected ? "Parent" : "Provider";
+    String role =  "Parent" ;
 
     var regBody = {
       "username": username,
@@ -87,8 +92,65 @@ class _RegistrationState extends State<SignUpPage> {
       VxToast.show(context, msg: "An error occurred. Please check your connection.");
     }
   }
+  void Googlesignup() async {
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
 
+      if (googleUser != null) {
+        // Extract user details
+        String name = googleUser.displayName ?? "Unknown";
+        String email = googleUser.email;
+        String photo = googleUser.photoUrl ?? "";
 
+        // Define role type
+        String roleType = "Parent"; // Change this if roleType is dynamic
+
+        // Prepare request body
+        Map<String, dynamic> requestBody = {
+          "name": name,
+          "email": email,
+          "photo": photo,
+          "roleType": roleType,
+        };
+
+        // Print request details
+        print("Sending POST request to: https://1steptest.vercel.app/server/auth/google");
+        print("Request Headers: { 'Content-Type': 'application/json' }");
+        print("Request Body: ${jsonEncode(requestBody)}");
+
+        // Send data to the server
+        final response = await http.post(
+          Uri.parse("https://1steptest.vercel.app/server/auth/google"),
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: jsonEncode(requestBody),
+        );
+
+        // Print response details
+        print("Response Status Code: ${response.statusCode}");
+        print("Response Body: ${response.body}");
+
+        if (response.statusCode == 200) {
+          print("Google Sign-Up Success!");
+          await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => DetailsPage()),
+          );
+        } else {
+          print("Error: ${response.statusCode} - ${response.body}");
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Signup failed: ${response.body}")),
+          );
+        }
+      }
+    } catch (error) {
+      print("Google Sign-In Failed: $error");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Google Sign-In Failed: $error")),
+      );
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -273,6 +335,31 @@ class _RegistrationState extends State<SignUpPage> {
                         color: Colors.white,
                           fontFamily:'afacad',
                       ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Google Sign-In Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: OutlinedButton(
+                    onPressed:  Googlesignup,
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.grey),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.asset('Assets/Images/google_icon.png', height: 24), // Larger Google Icon
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Sign in with Google',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87),
+                        ),
+                      ],
                     ),
                   ),
                 ),

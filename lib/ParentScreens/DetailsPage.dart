@@ -1,15 +1,24 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
+import 'package:http/http.dart' as http;
+import 'package:one_step/Auth/SignInPage.dart';
+import 'package:velocity_x/velocity_x.dart';
+
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'ParentDashBoard.dart'; // Package for country picker
 
 class DetailsPage extends StatefulWidget {
+
   @override
   _MultiStepFormState createState() => _MultiStepFormState();
 }
 
 class _MultiStepFormState extends State<DetailsPage> {
+
   PageController _pageController = PageController();
   int _currentPage = 0;
 
@@ -23,6 +32,8 @@ class _MultiStepFormState extends State<DetailsPage> {
   final TextEditingController bloodGroupController = TextEditingController();
   final TextEditingController medicalHistoryController = TextEditingController();
   final TextEditingController allergiesController = TextEditingController();
+  final TextEditingController EmergencyController = TextEditingController();
+
   final TextEditingController phoneNumberController = TextEditingController();
   final TextEditingController insuranceController = TextEditingController();
   final TextEditingController addressController = TextEditingController();
@@ -39,7 +50,69 @@ class _MultiStepFormState extends State<DetailsPage> {
     'ABA Therapy',
     'Social Skills Group'
   ];
+  void SubmitForm() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('access_token');
+    String? Id = prefs.getString('Id');
 
+    if (token == null || token.isEmpty) {
+      VxToast.show(context, msg: "Session expired! Please log in again.");
+      return;
+    }
+
+    var regBody = {
+      "isParent": true,
+      "parentDetails": {
+        "fullName": parentNameController.text,
+        "lookingFor": selectedServices, // Assuming this is a list
+        "childName": childNameController.text,
+        "dob": selectedDOB != null ? selectedDOB!.toIso8601String() : "",
+        "gender": selectedGender,
+        "height": heightController.text,
+        "weight": weightController.text,
+        "bloodGroup": bloodGroupController.text,
+        "medicalHistory": medicalHistoryController.text,
+        "allergies": allergiesController.text,
+        "emergencyContact": phoneNumberController.text, // Assuming this is the emergency contact
+        "insurance": insuranceController.text,
+        "address": addressController.text,
+        "phoneNumber": phoneNumberController.text, // Assuming this is the parent's phone number
+      },
+    };
+
+    try {
+      print('Sending request to server...');
+      print('Request Body: $regBody');
+      print('Access Token: $token');
+
+      var response = await http.post(
+        Uri.parse("https://1steptest.vercel.app/server/parent/createparent/$Id"),
+        headers: {
+          "Content-Type": "application/json",
+          "Cookie": "access_token=$token", // Send token as a cookie
+        },
+        body: jsonEncode(regBody),
+      ).timeout(const Duration(seconds: 30)); // Reduced timeout for better UX
+
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      // Handle the response
+      var jsonResponse = jsonDecode(response.body);
+      if (response.statusCode == 201 && jsonResponse['status'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(jsonResponse['message'] ?? "Parent details saved")),
+        );
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ParentDashBoard()));
+      }
+
+    } catch (e) {
+      print('Error occurred: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("An error occurred. Check your connection.")),
+      );
+    }
+  }
   void _nextPage() {
     if (_currentPage < 4) {
       _pageController.nextPage(
@@ -59,6 +132,7 @@ class _MultiStepFormState extends State<DetailsPage> {
       });
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -155,8 +229,8 @@ Widget buildPhysicalInfoPage() {
 
       buildTextField("Allergies", allergiesController),
       SizedBox(height: 10),
+      buildTextField("Emergency Contact", EmergencyController, maxLines: 1),
 
-      buildPhoneNumberField(), // Country Picker Added
       SizedBox(height: 10),
 
       buildTextField("Insurance Details", insuranceController),
@@ -169,6 +243,9 @@ Widget buildPhysicalInfoPage() {
   Widget buildContactInfoPage() {
     return buildPage("Contact Information", [
       buildTextField("Address", addressController, maxLines: 3),
+      SizedBox(height: 20),
+      buildPhoneNumberField(), // Country Picker Added
+
       SizedBox(height: 20),
 
       buildNavigationButtons(isLastPage: true),
@@ -250,6 +327,7 @@ Widget buildPhysicalInfoPage() {
     return Padding(
       padding: EdgeInsets.symmetric(vertical: 0.0),
       child: Column(
+
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Padding(
@@ -278,6 +356,7 @@ Widget buildPhysicalInfoPage() {
                   filled: true,
                   fillColor: Colors.grey[200],
                   border: OutlineInputBorder(
+
                     borderRadius: BorderRadius.circular(5),
                     borderSide: BorderSide.none,
                   ),
@@ -457,16 +536,14 @@ Widget buildPhysicalInfoPage() {
               child: Text("Back", style: TextStyle(color: Color(0xFF65467C))),
             ),
           ElevatedButton(
-            onPressed: isLastPage ? () {
-              // Navigate to ParentDashBoard
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ParentDashBoard(),
-                ),
-              );
-            }
-                : _nextPage,
+            onPressed: () {
+              if (isLastPage) {
+                SubmitForm(); // Call API when submitting the last page
+              } else {
+                _nextPage();
+              }
+            },
+
 
             style: ElevatedButton.styleFrom(
               backgroundColor: Color(0xFF65467C),

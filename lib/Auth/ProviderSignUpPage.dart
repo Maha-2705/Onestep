@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:one_step/config.dart';
 import 'package:velocity_x/velocity_x.dart';
 import 'package:http/http.dart' as http;
+import 'package:sign_in_button/sign_in_button.dart';
 
 
 import 'package:one_step/Auth/SignInPage.dart';
@@ -22,9 +23,7 @@ class _RegistrationState extends State<ProviderSignUpPage> {
   TextEditingController passwordController = TextEditingController();
   TextEditingController nameController = TextEditingController();
 
-  bool _isNotValidate = false;
   bool _termsAccepted = false;
-  bool _isParentSelected = true; // Default to 'Parent'
 
   void SignUp() async {
     String username = nameController.text.trim();
@@ -51,7 +50,7 @@ class _RegistrationState extends State<ProviderSignUpPage> {
       return;
     }
 
-    String role = _isParentSelected ? "Parent" : "Provider";
+    String role =  "Provider" ;
 
     var regBody = {
       "username": username,
@@ -79,7 +78,7 @@ class _RegistrationState extends State<ProviderSignUpPage> {
 
       if (jsonResponse['success']) { // Check 'success' field here
         VxToast.show(context, msg: jsonResponse['message'] ?? "Registered successfully!");
-        Navigator.push(context, MaterialPageRoute(builder: (context) => SignInPage()));
+        Navigator.push(context, MaterialPageRoute(builder: (context) => ProviderSignInPage()));
       } else {
         VxToast.show(context, msg: jsonResponse['message'] ?? "Something went wrong. Please try again.");
       }
@@ -276,6 +275,31 @@ class _RegistrationState extends State<ProviderSignUpPage> {
                         color: Colors.white,
                           fontFamily:'afacad',
                       ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Google Sign-In Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.grey),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () {  },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.asset('Assets/Images/google_icon.png', height: 24), // Larger Google Icon
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Sign in with Google',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87),
+                        ),
+                      ],
                     ),
                   ),
                 ),

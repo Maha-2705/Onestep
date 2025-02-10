@@ -2,15 +2,22 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:one_step/ParentScreens/ParentDashBoard.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+import 'package:cookie_jar/cookie_jar.dart';
+import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:velocity_x/velocity_x.dart';
 import 'package:http/http.dart' as http;
+import 'package:sign_in_button/sign_in_button.dart';
 
 import '../ParentScreens/DetailsPage.dart';
 import '../ProviderScreens/ProviderDetailsPage.dart';
 import 'package:one_step/Auth/SignInPage.dart';
 
 import 'package:one_step/Auth/ProviderSignUpPage.dart';
+
+import 'package:one_step/Auth/ResetPassword.dart';
 
 
 
@@ -22,65 +29,91 @@ class ProviderSignInPage extends StatefulWidget {
 class _SignInPageState extends State<ProviderSignInPage> {
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
-  bool _isNotValidate = false;
   bool _isChecked = false;
-  bool _isParentSelected = true; // Default to 'Parent'
   late SharedPreferences prefs;
-
-  @override
-  void initState() {
-    // TODO: implement initState
-    super.initState();
-    initSharedPref();
-  }
-
-  void initSharedPref() async{
-    prefs = await SharedPreferences.getInstance();
-  }
   void SignIn() async {
     String email = emailController.text.trim();
     String password = passwordController.text.trim();
 
-    // Validate email
+    if (email.isEmpty || !RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").hasMatch(email)) {
+      VxToast.show(context, msg: "Please enter a valid email address.");
+      return;
+    }
 
+    if (password.isEmpty || password.length < 6) {
+      VxToast.show(context, msg: "Password must be at least 6 characters.");
+      return;
+    }
 
-    var loginBody = {
-      "email": email,
-      "password": password,
-    };
+    var loginBody = {"email": email, "password": password};
+    final dio = Dio();
+    final cookieJar = CookieJar();
+    dio.interceptors.add(CookieManager(cookieJar));
 
     try {
-      print('Sending login request to server...');
-      print('Request Body: $loginBody');
-
-      var response = await http
-          .post(
-        Uri.parse("https://1steptest.vercel.app/server/auth/signin"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode(loginBody),
-      )
-          .timeout(const Duration(seconds: 10));
+      var response = await dio.post(
+        "https://1steptest.vercel.app/server/auth/signin",
+        data: loginBody,
+        options: Options(headers: {"Content-Type": "application/json"}),
+      );
 
       print('Response Status: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+      print('Response Headers: ${response.headers}');
+      print('Response Body: ${response.data}');
 
-      var jsonResponse = jsonDecode(response.body);
-      var myToken = jsonResponse['token'];
-      prefs.setString('token', myToken);
+      if (response.statusCode == 200) {
+        var jsonResponse = response.data;
 
-      if (jsonResponse['success']) { // Check 'success' field here
-        VxToast.show(context, msg: jsonResponse['message'] ?? "Login successful!");
-        Navigator.push(context, MaterialPageRoute(builder: (context) => ParentDashBoard())); // Redirect to home page
+        // ✅ Correct way to extract cookies
+        List<Cookie> cookies = await cookieJar.loadForRequest(Uri.parse("https://1steptest.vercel.app/server/auth/signin"));
+        String? accessToken;
+        String? refreshToken;
+
+        for (var cookie in cookies) {
+          if (cookie.name == "access_token") {
+            accessToken = cookie.value;
+          } else if (cookie.name == "refresh_token") {
+            refreshToken = cookie.value;
+          }
+        }
+
+        if (accessToken != null && refreshToken != null) {
+          final storage = FlutterSecureStorage();
+          await storage.write(key: 'access_token', value: accessToken);
+          await storage.write(key: 'refresh_token', value: refreshToken);
+
+          print("Extracted Access Token: $accessToken");
+          print("Extracted Refresh Token: $refreshToken");
+        }
+
+        var Id = jsonResponse['_id'];
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        prefs.setString('ID', Id);
+        prefs.setString('access_token', accessToken ?? "");
+
+        print("Id: $Id");
+        print("access_token: $accessToken");
+
+        var role = jsonResponse['role'];
+        if (role != null && role['role'] == 'Provider') {
+          VxToast.show(context, msg: jsonResponse['message'] ?? "Login successful!");
+
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => ProviderDetailsPage(accessToken: accessToken ?? "")),
+          );
+        } else {
+          VxToast.show(context, msg: "You are not a Parent user.");
+        }
       } else {
-        VxToast.show(context, msg: jsonResponse['message'] ?? "Invalid credentials. Please try again.");
+        print('Error: Server returned status code ${response.statusCode}');
+        VxToast.show(context, msg: "Server error: ${response.statusCode}");
       }
     } catch (e) {
       print('Error occurred: $e');
       VxToast.show(context, msg: "An error occurred. Please check your connection.");
     }
   }
-
-
 
   @override
   Widget build(BuildContext context) {
@@ -212,6 +245,10 @@ class _SignInPageState extends State<ProviderSignInPage> {
                     GestureDetector(
                       onTap: () {
                         // Navigate to Forgot Password Screen
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (context) => ResetPasswordScreen()),
+                        );
                       },
                       child: const Text(
                         'Forget password ?',
@@ -230,14 +267,7 @@ class _SignInPageState extends State<ProviderSignInPage> {
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                    onPressed: () {
-                      // Sign In logic here
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (context) => ProviderDetailsPage()),
-                      );
-
-                    },
+                   onPressed: SignIn,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Color(0xFF65467C),
                       shape: RoundedRectangleBorder(
@@ -251,6 +281,31 @@ class _SignInPageState extends State<ProviderSignInPage> {
                         color: Colors.white,
                           fontFamily:'afacad',
                       ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+
+                // Google Sign-In Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: Colors.grey),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: () {  },
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Image.asset('Assets/Images/google_icon.png', height: 24), // Larger Google Icon
+                        const SizedBox(width: 10),
+                        const Text(
+                          'Sign in with Google',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500, color: Colors.black87),
+                        ),
+                      ],
                     ),
                   ),
                 ),
