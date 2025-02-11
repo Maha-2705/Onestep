@@ -103,7 +103,76 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
 
 
   Future<void> submitForm() async {
+    try {
+      // Retrieve user ID from SharedPreferences
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? userId = prefs.getString('ID'); // Assuming 'userID' is stored in SharedPreferences
 
+      if (userId == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("User ID not found. Please log in again.")),
+        );
+        return;
+      }
+
+      // Collect all the data
+      final Map<String, dynamic> requestBody = {
+        "userRef": userId, // Include user ID in the request
+        "profilePicture": _profileImage != null ? _profileImage!.path : null,
+        "fullName": providerNameController.text,
+        "email": providerEmailController.text,
+        "qualification": providerQualificationController.text,
+        "experience": providerExperienceController.text,
+        "license": providerLicenseController.text,
+        "phone": providerPhoneController.text,
+        "description": _bioController.text,
+        "name": selectedServices,
+        "therapytype": selectedServiceTypes,
+        "regularPrice": providerFeeController.text,
+
+        "address": {
+          "addressLine1": providerAddressController.text,
+          "street": providerStreetController.text,
+          "country": providerCountryController.text,
+          "state": providerStateController.text,
+          "city": providerCityController.text,
+          "pincode": providerPincodeController.text,
+        },
+
+        "timeSlots": selectedSlotsPerDay,
+      };
+
+      print('Sending request to server...');
+      print('Request Body: $requestBody');
+
+      // Send the request to the backend
+      var response = await http.post(
+        Uri.parse("https://1steptest.vercel.app/server/provider/create"),
+        headers: {
+          "Content-Type": "application/json",
+          "Cookie": "access_token=${widget.accessToken}",
+        },
+        body: jsonEncode(requestBody),
+      ).timeout(const Duration(seconds: 30));
+
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
+
+      // Handle the response
+      var jsonResponse = jsonDecode(response.body);
+      if (response.statusCode == 201 && jsonResponse['success'] == true) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(jsonResponse['message'] ?? "Provider details saved!")),
+        );
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ProviderDashBoard()));
+      }
+
+    } catch (e) {
+      print('Error occurred: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("An error occurred. Check your connection.")),
+      );
+    }
   }
 
   void _nextPage() {

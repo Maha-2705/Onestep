@@ -11,6 +11,8 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   final TextEditingController emailController = TextEditingController();
   bool isLoading = false;
 
+
+
   Future<void> sendResetRequest() async {
     String email = emailController.text.trim();
 
@@ -25,14 +27,14 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       isLoading = true;
     });
 
-    final Uri url = Uri.parse("https://1steptest.vercel.app/server/auth/otppassword"); // Replace with actual API URL
+    final Uri url = Uri.parse("https://1steptest.vercel.app/server/auth/otppassword"); // Your backend API
     final Map<String, String> headers = {"Content-Type": "application/json"};
     final Map<String, dynamic> requestBody = {"email": email};
 
     try {
-      print("Sending request to: $url");
-      print("Request Headers: $headers");
-      print("Request Body: ${jsonEncode(requestBody)}");
+      print("🔹 Sending request to: $url");
+      print("🔹 Request Headers: $headers");
+      print("🔹 Request Body: ${jsonEncode(requestBody)}");
 
       final response = await http.post(
         url,
@@ -40,20 +42,28 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         body: jsonEncode(requestBody),
       );
 
-      print("Response Status Code: ${response.statusCode}");
-      print("Response Body: ${response.body}");
+      print("🔹 Response Status Code: ${response.statusCode}");
+      print("🔹 Response Body: ${response.body}");
 
-      if (response.statusCode == 200) {
+      // Decode the JSON response
+      final responseData = jsonDecode(response.body);
+
+      if (response.statusCode == 200 && responseData["status"] == true) {
+        // OTP successfully sent
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("OTP sent successfully! Check your email.")),
         );
+
+        print("✅ OTP: ${responseData["otp"]}"); // Debugging: Print OTP
       } else {
+        // Handle error message from backend
+        String errorMessage = responseData["message"] ?? "Unknown error occurred.";
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Error: ${response.body}")),
+          SnackBar(content: Text("Error: $errorMessage")),
         );
       }
     } catch (error) {
-      print("Error: $error");
+      print("❌ Network Error: $error");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Network error. Please try again.")),
       );

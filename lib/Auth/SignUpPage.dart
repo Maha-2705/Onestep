@@ -6,7 +6,7 @@ import 'package:one_step/ParentScreens/DetailsPage.dart';
 import 'package:one_step/config.dart';
 import 'package:velocity_x/velocity_x.dart';
 import 'package:http/http.dart' as http;
-
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sign_in_button/sign_in_button.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
@@ -94,15 +94,35 @@ class _RegistrationState extends State<SignUpPage> {
   }
   void Googlesignup() async {
     try {
+      // Trigger the authentication flow
       final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
 
-      if (googleUser != null) {
-        // Extract user details
-        String name = googleUser.displayName ?? "Unknown";
-        String email = googleUser.email;
-        String photo = googleUser.photoUrl ?? "";
+      if (googleUser == null) {
+        print("Google Sign-In canceled.");
+        return;
+      }
 
-        // Define role type
+      // Obtain the auth details from the request
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      // Create a new credential
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Sign in to Firebase with the Google credential
+      UserCredential userCredential =
+      await FirebaseAuth.instance.signInWithCredential(credential);
+
+      // Get Firebase user details
+      User? user = userCredential.user;
+
+      if (user != null) {
+        // Extract user details
+        String name = user.displayName ?? "Unknown";
+        String email = user.email ?? "";
+        String photo = user.photoURL ?? "";
         String roleType = "Parent"; // Change this if roleType is dynamic
 
         // Prepare request body
@@ -133,7 +153,7 @@ class _RegistrationState extends State<SignUpPage> {
 
         if (response.statusCode == 200) {
           print("Google Sign-Up Success!");
-          await Navigator.push(
+          Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => DetailsPage()),
           );
