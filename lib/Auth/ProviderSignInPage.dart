@@ -10,7 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:velocity_x/velocity_x.dart';
 import 'package:http/http.dart' as http;
 import 'package:sign_in_button/sign_in_button.dart';
-
+import 'package:google_sign_in/google_sign_in.dart';
 import '../ParentScreens/DetailsPage.dart';
 import '../ProviderScreens/ProviderDetailsPage.dart';
 import 'package:one_step/Auth/SignInPage.dart';
@@ -89,7 +89,7 @@ class _SignInPageState extends State<ProviderSignInPage> {
         var Id = jsonResponse['_id'];
         SharedPreferences prefs = await SharedPreferences.getInstance();
         prefs.setString('ID', Id);
-        prefs.setString('access_token', accessToken ?? "");
+        prefs.setString('Access_token', accessToken ?? "");
 
         print("Id: $Id");
         print("access_token: $accessToken");
@@ -100,7 +100,7 @@ class _SignInPageState extends State<ProviderSignInPage> {
 
           Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => ProviderDetailsPage(accessToken: accessToken ?? "")),
+            MaterialPageRoute(builder: (context) => ProviderDetailsPage(userId: Id)),
           );
         } else {
           VxToast.show(context, msg: "You are not a Parent user.");
@@ -114,7 +114,110 @@ class _SignInPageState extends State<ProviderSignInPage> {
       VxToast.show(context, msg: "An error occurred. Please check your connection.");
     }
   }
+  void Googlesignup() async {
+    try {
+      // Start Google Sign-In
+      final GoogleSignIn googleSignIn = GoogleSignIn();
 
+      // ✅ Force show account picker by signing out first
+      await googleSignIn.signOut();
+
+      // ✅ Now prompt for sign-in (this will show available accounts)
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
+
+      if (googleUser == null) {
+        print("Google Sign-In canceled.");
+        return;
+      }
+
+      // Retrieve user details
+      String name = googleUser.displayName ?? "Unknown";
+      String email = googleUser.email;
+      String photo = googleUser.photoUrl ?? "";
+      String roleType = "Provider"; // Default role
+
+      // Prepare data for backend
+      Map<String, dynamic> requestBody = {
+        "name": name,
+        "email": email,
+        "photo": photo,
+        "roleType": roleType,
+      };
+
+      print("Google Sign-In Success: $requestBody");
+
+      // Setup Dio for request and cookie handling
+      final dio = Dio();
+      final cookieJar = CookieJar();
+      dio.interceptors.add(CookieManager(cookieJar));
+
+      var response = await dio.post(
+        "https://1steptest.vercel.app/server/auth/google",
+        data: requestBody,
+        options: Options(headers: {"Content-Type": "application/json"}),
+      );
+
+      print("Response Status: ${response.statusCode}");
+      print("Response Body: ${response.data}");
+
+      if (response.statusCode == 200) {
+        var responseData = response.data;
+
+        // ✅ Extract cookies
+        List<Cookie> cookies = await cookieJar.loadForRequest(Uri.parse("https://1steptest.vercel.app/server/auth/google"));
+        String? accessToken;
+        String? refreshToken;
+
+        for (var cookie in cookies) {
+          if (cookie.name == "access_token") {
+            accessToken = cookie.value;
+          } else if (cookie.name == "refresh_token") {
+            refreshToken = cookie.value;
+          }
+        }
+
+        if (accessToken != null && refreshToken != null) {
+          final storage = FlutterSecureStorage();
+          await storage.write(key: 'access_token', value: accessToken);
+          await storage.write(key: 'refresh_token', value: refreshToken);
+
+          print("Extracted Access Token: $accessToken");
+          print("Extracted Refresh Token: $refreshToken");
+        }
+        var Id = responseData['_id'];
+
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        prefs.setString('GoogleuserId', Id);
+
+        prefs.setString('Google_access_token', accessToken ?? "");
+        if (responseData is Map<String, dynamic>) {
+          print("User data stored successfully!");
+
+          // Navigate to Details Page
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => ProviderDetailsPage(userId: Id)),
+          );
+        } else {
+          print("Unexpected response format: $responseData");
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Signup failed: Unexpected response format")),
+          );
+        }
+      } else {
+        print("Error: ${response.statusCode} - ${response.data}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Signup failed: ${response.data}")),
+        );
+      }
+    } catch (error) {
+      print("Google Sign-In Failed: $error");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Google Sign-In Failed: $error")),
+      );
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -291,11 +394,11 @@ class _SignInPageState extends State<ProviderSignInPage> {
                   width: double.infinity,
                   height: 50,
                   child: OutlinedButton(
+                    onPressed: Googlesignup,
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: Colors.grey),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
-                    onPressed: () {  },
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [

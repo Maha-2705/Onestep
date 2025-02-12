@@ -10,9 +10,9 @@ import 'package:flutter/material.dart';
 import '../ParentScreens/HomePage.dart';
 
 class ProviderDetailsPage extends StatefulWidget {
-  final String accessToken;
+  final String userId;
 
-  ProviderDetailsPage({required this.accessToken});
+  ProviderDetailsPage({required this.userId});
 
   @override
   _ProviderDetailsPageState createState() => _ProviderDetailsPageState();
@@ -103,21 +103,16 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
 
 
   Future<void> submitForm() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('Access_token');
+    String? googleToken = prefs.getString('Google_access_token');
+    print('Google Token: $googleToken');
+
     try {
       // Retrieve user ID from SharedPreferences
-      SharedPreferences prefs = await SharedPreferences.getInstance();
-      String? userId = prefs.getString('ID'); // Assuming 'userID' is stored in SharedPreferences
-
-      if (userId == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("User ID not found. Please log in again.")),
-        );
-        return;
-      }
-
       // Collect all the data
       final Map<String, dynamic> requestBody = {
-        "userRef": userId, // Include user ID in the request
+        "userRef": widget.userId, // Include user ID in the request
         "profilePicture": _profileImage != null ? _profileImage!.path : null,
         "fullName": providerNameController.text,
         "email": providerEmailController.text,
@@ -144,13 +139,21 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
 
       print('Sending request to server...');
       print('Request Body: $requestBody');
-
+      // Construct Cookie Header
+      String cookieHeader = "";
+      if (token != null && token.isNotEmpty) {
+        cookieHeader += "access_token=$token;";
+      }
+      if (googleToken != null && googleToken.isNotEmpty) {
+        cookieHeader += "Google_access_token=$googleToken;";
+      }
+      print('cookie token: $cookieHeader');
       // Send the request to the backend
       var response = await http.post(
         Uri.parse("https://1steptest.vercel.app/server/provider/create"),
         headers: {
           "Content-Type": "application/json",
-          "Cookie": "access_token=${widget.accessToken}",
+          if (cookieHeader.isNotEmpty) "Cookie": cookieHeader, // Send both tokens in cookies
         },
         body: jsonEncode(requestBody),
       ).timeout(const Duration(seconds: 30));

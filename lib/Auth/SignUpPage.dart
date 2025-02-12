@@ -9,10 +9,15 @@ import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sign_in_button/sign_in_button.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:cookie_jar/cookie_jar.dart';
 
+import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 
 import 'package:one_step/Auth/SignInPage.dart';
-
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'ProviderSignInPage.dart';
 
 
@@ -21,6 +26,10 @@ class SignUpPage extends StatefulWidget {
   _RegistrationState createState() => _RegistrationState();
 }
 class _RegistrationState extends State<SignUpPage> {
+  final Dio dio = Dio();
+  final FlutterSecureStorage storage = FlutterSecureStorage();
+  final CookieJar cookieJar = CookieJar();
+
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   TextEditingController emailController = TextEditingController();
@@ -94,75 +103,100 @@ class _RegistrationState extends State<SignUpPage> {
   }
   void Googlesignup() async {
     try {
-      // Trigger the authentication flow
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      // Start Google Sign-In
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+
+      // ✅ Force show account picker by signing out first
+      await googleSignIn.signOut();
+
+      // ✅ Now prompt for sign-in (this will show available accounts)
+      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+
 
       if (googleUser == null) {
         print("Google Sign-In canceled.");
         return;
       }
 
-      // Obtain the auth details from the request
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      // Retrieve user details
+      String name = googleUser.displayName ?? "Unknown";
+      String email = googleUser.email;
+      String photo = googleUser.photoUrl ?? "";
+      String roleType = "Parent"; // Default role
 
-      // Create a new credential
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
+      // Prepare data for backend
+      Map<String, dynamic> requestBody = {
+        "name": name,
+        "email": email,
+        "photo": photo,
+        "roleType": roleType,
+      };
+
+      print("Google Sign-In Success: $requestBody");
+
+      // Setup Dio for request and cookie handling
+      final dio = Dio();
+      final cookieJar = CookieJar();
+      dio.interceptors.add(CookieManager(cookieJar));
+
+      var response = await dio.post(
+        "https://1steptest.vercel.app/server/auth/google",
+        data: requestBody,
+        options: Options(headers: {"Content-Type": "application/json"}),
       );
 
-      // Sign in to Firebase with the Google credential
-      UserCredential userCredential =
-      await FirebaseAuth.instance.signInWithCredential(credential);
+      print("Response Status: ${response.statusCode}");
+      print("Response Body: ${response.data}");
 
-      // Get Firebase user details
-      User? user = userCredential.user;
+      if (response.statusCode == 200) {
+        var responseData = response.data;
 
-      if (user != null) {
-        // Extract user details
-        String name = user.displayName ?? "Unknown";
-        String email = user.email ?? "";
-        String photo = user.photoURL ?? "";
-        String roleType = "Parent"; // Change this if roleType is dynamic
+        // ✅ Extract cookies
+        List<Cookie> cookies = await cookieJar.loadForRequest(Uri.parse("https://1steptest.vercel.app/server/auth/google"));
+        String? accessToken;
+        String? refreshToken;
 
-        // Prepare request body
-        Map<String, dynamic> requestBody = {
-          "name": name,
-          "email": email,
-          "photo": photo,
-          "roleType": roleType,
-        };
+        for (var cookie in cookies) {
+          if (cookie.name == "access_token") {
+            accessToken = cookie.value;
+          } else if (cookie.name == "refresh_token") {
+            refreshToken = cookie.value;
+          }
+        }
 
-        // Print request details
-        print("Sending POST request to: https://1steptest.vercel.app/server/auth/google");
-        print("Request Headers: { 'Content-Type': 'application/json' }");
-        print("Request Body: ${jsonEncode(requestBody)}");
+        if (accessToken != null && refreshToken != null) {
+          final storage = FlutterSecureStorage();
+          await storage.write(key: 'access_token', value: accessToken);
+          await storage.write(key: 'refresh_token', value: refreshToken);
 
-        // Send data to the server
-        final response = await http.post(
-          Uri.parse("https://1steptest.vercel.app/server/auth/google"),
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: jsonEncode(requestBody),
-        );
+          print("Extracted Access Token: $accessToken");
+          print("Extracted Refresh Token: $refreshToken");
+        }
+        var Id = responseData['_id'];
 
-        // Print response details
-        print("Response Status Code: ${response.statusCode}");
-        print("Response Body: ${response.body}");
+        SharedPreferences prefs = await SharedPreferences.getInstance();
+        prefs.setString('google_access_token', accessToken ?? "");
+        prefs.setString('GoogleUserId', Id);
 
-        if (response.statusCode == 200) {
-          print("Google Sign-Up Success!");
+        if (responseData is Map<String, dynamic>) {
+          print("User data stored successfully!");
+
+          // Navigate to Details Page
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) => DetailsPage()),
+            MaterialPageRoute(builder: (context) => DetailsPage(userId: Id)),
           );
         } else {
-          print("Error: ${response.statusCode} - ${response.body}");
+          print("Unexpected response format: $responseData");
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Signup failed: ${response.body}")),
+            SnackBar(content: Text("Signup failed: Unexpected response format")),
           );
         }
+      } else {
+        print("Error: ${response.statusCode} - ${response.data}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Signup failed: ${response.data}")),
+        );
       }
     } catch (error) {
       print("Google Sign-In Failed: $error");
@@ -171,6 +205,7 @@ class _RegistrationState extends State<SignUpPage> {
       );
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(

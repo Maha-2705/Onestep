@@ -12,7 +12,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'ParentDashBoard.dart'; // Package for country picker
 
 class DetailsPage extends StatefulWidget {
+  final String userId;
 
+  DetailsPage({required this.userId});
   @override
   _MultiStepFormState createState() => _MultiStepFormState();
 }
@@ -54,8 +56,11 @@ class _MultiStepFormState extends State<DetailsPage> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('access_token');
     String? Id = prefs.getString('Id');
+    String? Googleuserid = prefs.getString('GoogleUserId');
 
-    if (token == null || token.isEmpty) {
+    String? googleToken = prefs.getString('google_access_token');
+
+    if ((token == null || token.isEmpty) && (googleToken == null || googleToken.isEmpty)) {
       VxToast.show(context, msg: "Session expired! Please log in again.");
       return;
     }
@@ -84,12 +89,23 @@ class _MultiStepFormState extends State<DetailsPage> {
       print('Sending request to server...');
       print('Request Body: $regBody');
       print('Access Token: $token');
+      print('Google Access Token: $googleToken');
+
+      // Construct Cookie Header
+      String cookieHeader = "";
+      if (token != null && token.isNotEmpty) {
+        cookieHeader += "access_token=$token;";
+      }
+      if (googleToken != null && googleToken.isNotEmpty) {
+        cookieHeader += "google_access_token=$googleToken;";
+      }
+      print('cookie token: $cookieHeader');
 
       var response = await http.post(
-        Uri.parse("https://1steptest.vercel.app/server/parent/createparent/$Id"),
+        Uri.parse("https://1steptest.vercel.app/server/parent/createparent/${widget.userId}"),
         headers: {
           "Content-Type": "application/json",
-          "Cookie": "access_token=$token", // Send token as a cookie
+          if (cookieHeader.isNotEmpty) "Cookie": cookieHeader, // Send both tokens in cookies
         },
         body: jsonEncode(regBody),
       ).timeout(const Duration(seconds: 30)); // Reduced timeout for better UX
@@ -113,6 +129,7 @@ class _MultiStepFormState extends State<DetailsPage> {
       );
     }
   }
+
   void _nextPage() {
     if (_currentPage < 4) {
       _pageController.nextPage(
