@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
 
+import '../AppColors.dart';
 import 'OnboardingScreen.dart';
 
 class SplashScreen extends StatefulWidget {
@@ -30,7 +31,7 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF65467C),  // Purple background
+      backgroundColor: AppColors.primaryColor,  // Purple background
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,  // Center items vertically

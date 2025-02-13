@@ -9,6 +9,7 @@ import 'package:velocity_x/velocity_x.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../AppColors.dart';
 import 'ParentDashBoard.dart'; // Package for country picker
 
 class DetailsPage extends StatefulWidget {
@@ -157,7 +158,7 @@ class _MultiStepFormState extends State<DetailsPage> {
       backgroundColor: Color(0xFFE6E6E6), // Set background color to light grey
       appBar: AppBar(
         title: Text("${_currentPage + 1} of 5 Question", style: TextStyle(fontFamily: 'afacad',color: Colors.white)),
-        backgroundColor: Color(0xFF65467C),
+        backgroundColor: AppColors.primaryColor,
         automaticallyImplyLeading: false, // Remove the back arrow
         elevation: 0, // Flat design
       ),
@@ -297,7 +298,7 @@ Widget buildPhysicalInfoPage() {
         Container(
           height: 45, // Set the height for the field
           decoration: BoxDecoration(
-            color: Colors.grey[200],
+            color: AppColors.textfieldcolor,
             borderRadius: BorderRadius.circular(5),
             boxShadow: [
               BoxShadow(
@@ -320,7 +321,7 @@ Widget buildPhysicalInfoPage() {
             child: InputDecorator(
               decoration: InputDecoration(
                 filled: true,
-                fillColor: Colors.grey[200],
+                fillColor: AppColors.textfieldcolor,
                 hintText: "Select a date",
 
                 hintStyle: TextStyle(fontSize: 14,fontFamily: 'afacad'), // Optional: Customize the hint text style if needed
@@ -356,7 +357,7 @@ Widget buildPhysicalInfoPage() {
             height: 45,
             padding: EdgeInsets.only(top: 5.0), // Added 10px padding at the top
             decoration: BoxDecoration(
-              color: Colors.grey[200],
+              color: AppColors.textfieldcolor,
               borderRadius: BorderRadius.circular(5),
               boxShadow: [
                 BoxShadow(
@@ -371,7 +372,7 @@ Widget buildPhysicalInfoPage() {
               child: IntlPhoneField(
                 decoration: InputDecoration(
                   filled: true,
-                  fillColor: Colors.grey[200],
+                  fillColor: AppColors.textfieldcolor,
                   border: OutlineInputBorder(
 
                     borderRadius: BorderRadius.circular(5),
@@ -409,7 +410,7 @@ Widget buildPhysicalInfoPage() {
         Container(
           height: 45, // Set the height for the field
           decoration: BoxDecoration(
-            color: Colors.grey[200],
+            color:  AppColors.textfieldcolor,
             borderRadius: BorderRadius.circular(5),
             boxShadow: [
               BoxShadow(
@@ -422,7 +423,7 @@ Widget buildPhysicalInfoPage() {
           child: DropdownButtonFormField(
             decoration: InputDecoration(
               filled: true,
-              fillColor: Colors.grey[200],
+              fillColor:  AppColors.textfieldcolor,
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(5), borderSide: BorderSide.none),
               contentPadding: EdgeInsets.symmetric(vertical: 12.0, horizontal: 10.0), // Adjusted contentPadding for vertical centering
             ),
@@ -450,7 +451,7 @@ Widget buildPhysicalInfoPage() {
           Container(
             height: 45, // Set the height for the field
             decoration: BoxDecoration(
-              color: Colors.grey[200], // Light grey background
+              color:  AppColors.textfieldcolor, // Light grey background
               borderRadius: BorderRadius.circular(5), // Rounded corners
               boxShadow: [
                 BoxShadow(
@@ -468,7 +469,7 @@ Widget buildPhysicalInfoPage() {
                 filled: true,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(5), borderSide: BorderSide.none),
 
-                fillColor: Colors.grey[200], // Light grey background
+                fillColor:  AppColors.textfieldcolor, // Light grey background
                 contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
               ),
               maxLines: maxLines,
@@ -540,7 +541,7 @@ Widget buildPhysicalInfoPage() {
             OutlinedButton(
               onPressed: _prevPage,
               style: OutlinedButton.styleFrom(
-                side: BorderSide(color: Color(0xFF65467C), width: 2),
+                side: BorderSide(color:  AppColors.primaryColor, width: 2),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(12),
@@ -550,7 +551,7 @@ Widget buildPhysicalInfoPage() {
                   ),
                 ),
               ),
-              child: Text("Back", style: TextStyle(color: Color(0xFF65467C))),
+              child: Text("Back", style: TextStyle(color: AppColors.primaryColor)),
             ),
           ElevatedButton(
             onPressed: () {
@@ -563,7 +564,7 @@ Widget buildPhysicalInfoPage() {
 
 
             style: ElevatedButton.styleFrom(
-              backgroundColor: Color(0xFF65467C),
+              backgroundColor: AppColors.primaryColor,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.only(
                   topLeft: Radius.circular(12),

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../AppColors.dart';
 import 'HomePage.dart';
 import 'appointments_page.dart';
 import 'messages_page.dart';
@@ -44,8 +45,8 @@ class _ParentDashBoardState extends State<ParentDashBoard> {
             currentIndex: _currentIndex,
             type: BottomNavigationBarType.fixed,
             backgroundColor: Colors.white,
-            selectedItemColor: Color(0xFF65467C),
-            unselectedItemColor: Colors.grey,
+            selectedItemColor: AppColors.primaryColor,
+            unselectedItemColor: AppColors.greycolor,
             showUnselectedLabels: false,
             onTap: (index) {
               setState(() {

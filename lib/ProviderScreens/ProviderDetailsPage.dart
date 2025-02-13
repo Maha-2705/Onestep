@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:flutter/material.dart';
 
+import '../AppColors.dart';
 import '../ParentScreens/HomePage.dart';
 
 class ProviderDetailsPage extends StatefulWidget {
@@ -205,7 +206,7 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
       appBar: AppBar(
         title: Text("Provider Details - Step ${_currentPage + 1} of 9",
             style: TextStyle(fontFamily: 'afacad', color: Colors.white)),
-        backgroundColor: Color(0xFF65467C),
+        backgroundColor: AppColors.primaryColor,
         automaticallyImplyLeading: false,
         elevation: 0,
       ),
@@ -286,7 +287,7 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(8), // Rounded corners
                     border: Border.all(
-                      color: Colors.grey, // Border color
+                      color: AppColors.greycolor, // Border color
                       width: 1.0, // Border width
                     ),
                   ),
@@ -326,7 +327,7 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
                           selectedDay = day;
                         });
                       },
-                      selectedColor: Color(0xFF65467C),
+                      selectedColor:AppColors.primaryColor,
                       labelStyle: TextStyle(
                           color: selectedDay == day ? Colors.white : Colors.black),
                     ),
@@ -510,7 +511,7 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
         Container(
           height: 150,
           decoration: BoxDecoration(
-            color: Colors.grey[200],
+            color: AppColors.textfieldcolor,
             borderRadius: BorderRadius.circular(5),
             boxShadow: [
               BoxShadow(
@@ -555,7 +556,7 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
           Container(
             height: 45,
             decoration: BoxDecoration(
-              color: Colors.grey[200],
+              color: AppColors.textfieldcolor,
               borderRadius: BorderRadius.circular(5),
               boxShadow: [
                 BoxShadow(
@@ -687,9 +688,9 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
           ElevatedButton(
             onPressed: _prevPage,
             style: ButtonStyle(
-              side: MaterialStateProperty.all(BorderSide(color: Color(0xFF65467C), width: 2)),
+              side: MaterialStateProperty.all(BorderSide(color: AppColors.primaryColor, width: 2)),
               backgroundColor: MaterialStateProperty.all(Colors.white),
-              foregroundColor: MaterialStateProperty.all(Color(0xFF65467C)),
+              foregroundColor: MaterialStateProperty.all(AppColors.primaryColor),
               shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0))), // Light curve
             ),
             child: Text("Back"),
@@ -701,7 +702,7 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
               onPressed: isLastPage ? submitForm : _nextPage, // Call submitForm() when it's the last page
 
               style: ButtonStyle(
-                backgroundColor: MaterialStateProperty.all(Color(0xFF65467C)),
+                backgroundColor: MaterialStateProperty.all(AppColors.primaryColor),
                 foregroundColor: MaterialStateProperty.all(Colors.white),
                 shape: MaterialStateProperty.all(RoundedRectangleBorder(borderRadius: BorderRadius.circular(8.0))), // Light curve
               ),

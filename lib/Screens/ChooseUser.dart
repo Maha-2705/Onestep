@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:one_step/Auth/SignInPage.dart'; // Create this screen separately
-import 'package:one_step/Auth/ProviderSignInPage.dart'; // Create this screen separately
+import 'package:one_step/Auth/ProviderSignInPage.dart';
+
+import '../AppColors.dart'; // Create this screen separately
 
 class Chooseuser extends StatelessWidget {
   @override
@@ -36,7 +38,7 @@ class _OnboardingScreenState extends State<OnboardingScreen1> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Color(0xFF65467C),
+      backgroundColor: AppColors.primaryColor,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -66,7 +68,7 @@ class _OnboardingScreenState extends State<OnboardingScreen1> {
                       onTap: () => setState(() => _currentIndex = 0),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.pink,
+                          color: AppColors.pink,
                           shape: BoxShape.circle,
                         ),
                         padding: EdgeInsets.all(8),
@@ -84,7 +86,7 @@ class _OnboardingScreenState extends State<OnboardingScreen1> {
                       onTap: () => setState(() => _currentIndex = 1),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: Colors.pink,
+                          color:AppColors.pink,
                           shape: BoxShape.circle,
                         ),
                         padding: EdgeInsets.all(8),

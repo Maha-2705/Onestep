@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:one_step/AppColors.dart';
 import 'package:one_step/ProviderScreens/ProviderDetailsPage.dart';
 import 'package:one_step/config.dart';
 import 'package:velocity_x/velocity_x.dart';
@@ -262,12 +263,12 @@ class _RegistrationState extends State<ProviderSignUpPage> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      const Text(
+                      Text(
                         'by creating a free account.',
                         style: TextStyle(
                           fontSize: 16,
                           fontFamily:'afacad',
-                          color: Colors.grey,
+                          color: AppColors.greycolor,
                         ),
                       ),
                     ],
@@ -288,7 +289,7 @@ class _RegistrationState extends State<ProviderSignUpPage> {
                       borderSide: BorderSide.none,
                     ),
                     filled: true,
-                    fillColor: Colors.grey[200],
+                    fillColor: AppColors.textfieldcolor,
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -306,7 +307,7 @@ class _RegistrationState extends State<ProviderSignUpPage> {
                       borderSide: BorderSide.none,
                     ),
                     filled: true,
-                    fillColor: Colors.grey[200],
+                    fillColor:AppColors.textfieldcolor,
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -325,7 +326,7 @@ class _RegistrationState extends State<ProviderSignUpPage> {
                       borderSide: BorderSide.none,
                     ),
                     filled: true,
-                    fillColor: Colors.grey[200],
+                    fillColor:AppColors.textfieldcolor,
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -339,7 +340,7 @@ class _RegistrationState extends State<ProviderSignUpPage> {
                           _termsAccepted = value ?? false;
                         });
                       },
-                      activeColor: Color(0xFF65467C),
+                      activeColor: AppColors.primaryColor,
                     ),
                     const Expanded(
                       child: Text.rich(
@@ -352,7 +353,7 @@ class _RegistrationState extends State<ProviderSignUpPage> {
                             TextSpan(
                               text: 'Terms',
                               style: TextStyle(
-                                color: Color(0xFF65467C),
+                                color: AppColors.primaryColor,
                                 fontWeight: FontWeight.bold,
                                   fontFamily:'afacad',
                               ),
@@ -361,7 +362,7 @@ class _RegistrationState extends State<ProviderSignUpPage> {
                             TextSpan(
                               text: 'Conditions.',
                               style: TextStyle(
-                                color: Color(0xFF65467C),
+                                color:AppColors.primaryColor,
                                 fontWeight: FontWeight.bold,
                                   fontFamily:'afacad',
                               ),
@@ -380,7 +381,7 @@ class _RegistrationState extends State<ProviderSignUpPage> {
                   child: ElevatedButton(
                     onPressed: SignUp,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF65467C),
+                      backgroundColor: AppColors.primaryColor,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12.0),
                       ),
@@ -404,7 +405,7 @@ class _RegistrationState extends State<ProviderSignUpPage> {
                   child: OutlinedButton(
                     onPressed: Googlesignup,
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.grey),
+                      side: const BorderSide(color:AppColors.greycolor),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     child: Row(
@@ -440,7 +441,7 @@ class _RegistrationState extends State<ProviderSignUpPage> {
                         child: const Text(
                           'Login',
                           style: TextStyle(
-                            color: Color(0xFF65467C),
+                            color: AppColors.primaryColor,
                             fontWeight: FontWeight.bold,
                               fontFamily:'afacad',
                           ),

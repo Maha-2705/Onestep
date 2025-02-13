@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:one_step/AppColors.dart';
 import 'package:one_step/Auth/ResetPassword.dart';
 import 'package:one_step/ParentScreens/ParentDashBoard.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -292,11 +293,11 @@ class _SignInPageState extends State<SignInPage> {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      const Text(
+                      Text(
                         'Signin to access your account',
                         style: TextStyle(
                           fontSize: 16,
-                          color: Colors.grey,
+                          color: AppColors.greycolor,
                           fontFamily:'afacad',
                         ),
                       ),
@@ -318,7 +319,7 @@ class _SignInPageState extends State<SignInPage> {
                       borderSide: BorderSide.none,
                     ),
                     filled: true,
-                    fillColor: Colors.grey[200],
+                    fillColor: AppColors.textfieldcolor,
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -337,7 +338,7 @@ class _SignInPageState extends State<SignInPage> {
                       borderSide: BorderSide.none,
                     ),
                     filled: true,
-                    fillColor: Colors.grey[200],
+                    fillColor: AppColors.textfieldcolor,
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -354,7 +355,7 @@ class _SignInPageState extends State<SignInPage> {
                               _isChecked = value!;
                             });
                           },
-                          activeColor: Color(0xFF65467C), // Set the checkbox color to blue
+                          activeColor: AppColors.primaryColor, // Set the checkbox color to blue
                         ),
 
 
@@ -375,7 +376,7 @@ class _SignInPageState extends State<SignInPage> {
                       child: const Text(
                         'Forget password ?',
                         style: TextStyle(
-                          color: Color(0xFF65467C),
+                          color: AppColors.primaryColor,
                           fontWeight: FontWeight.w500,
                           fontFamily:'afacad',
                         ),
@@ -392,7 +393,7 @@ class _SignInPageState extends State<SignInPage> {
                     onPressed: SignIn,
 
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: Color(0xFF65467C),
+                      backgroundColor: AppColors.primaryColor,
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12.0),
                       ),
@@ -417,7 +418,7 @@ class _SignInPageState extends State<SignInPage> {
                   child: OutlinedButton(
                     onPressed: Googlesignup,
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.grey),
+                      side: const BorderSide(color: AppColors.greycolor),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     child: Row(
@@ -455,7 +456,7 @@ class _SignInPageState extends State<SignInPage> {
                         child: const Text(
                           'Register',
                           style: TextStyle(
-                            color: Color(0xFF65467C),
+                            color: AppColors.primaryColor,
                             fontWeight: FontWeight.bold,
                             fontFamily:'afacad',
                           ),

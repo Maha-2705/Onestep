@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:one_step/Screens/ChooseUser.dart';
 
+import '../AppColors.dart';
+
 class OnboardingScreen extends StatefulWidget {
   @override
   _OnboardingScreenState createState() => _OnboardingScreenState();
@@ -61,7 +63,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       ? SizedBox.shrink()
                       : Container(
                     decoration: BoxDecoration(
-                      color: Color(0xFF65467C), // Same color as forward button
+                      color: AppColors.primaryColor, // Same color as forward button
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
@@ -77,7 +79,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   // Forward Arrow
                   Container(
                     decoration: BoxDecoration(
-                      color: Color(0xFF65467C),
+                      color: AppColors.primaryColor,
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(

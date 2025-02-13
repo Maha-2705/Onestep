@@ -2,6 +2,8 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
+import '../AppColors.dart';
+
 class ResetPasswordScreen extends StatefulWidget {
   @override
   _ResetPasswordScreenState createState() => _ResetPasswordScreenState();
@@ -80,7 +82,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       appBar: AppBar(
         title: Text("Reset Password", style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
-        backgroundColor: Color(0xFF65467C),
+        backgroundColor: AppColors.primaryColor,
         foregroundColor: Colors.white,
       ),
       body: Padding(
@@ -90,7 +92,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
           children: [
             Text(
               "Enter your email to receive a password reset OTP",
-              style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+              style: TextStyle(fontSize: 16, color: AppColors.greycolor),
             ),
             SizedBox(height: 20),
 
@@ -118,7 +120,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                   child: Text(
                     "Terms & Conditions",
                     style: TextStyle(
-                      color: Color(0xFF65467C),
+                      color: AppColors.primaryColor,
                       fontWeight: FontWeight.bold,
                       decoration: TextDecoration.underline,
                     ),
@@ -135,7 +137,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
               child: ElevatedButton(
                 onPressed: isLoading ? null : sendResetRequest,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Color(0xFF65467C),
+                  backgroundColor: AppColors.primaryColor,
                   foregroundColor: Colors.white,
                 ),
                 child: isLoading
