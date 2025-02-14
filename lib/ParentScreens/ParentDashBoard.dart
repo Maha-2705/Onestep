@@ -6,6 +6,9 @@ import 'messages_page.dart';
 import 'profile_page.dart';
 
 class ParentDashBoard extends StatefulWidget {
+  final String userId;
+
+  ParentDashBoard({required this.userId});
   @override
   _ParentDashBoardState createState() => _ParentDashBoardState();
 }

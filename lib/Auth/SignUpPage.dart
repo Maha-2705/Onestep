@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:one_step/AppColors.dart';
 import 'package:one_step/ParentScreens/DetailsPage.dart';
 import 'package:one_step/config.dart';
-import 'package:velocity_x/velocity_x.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sign_in_button/sign_in_button.dart';
@@ -46,26 +45,34 @@ class _RegistrationState extends State<SignUpPage> {
     String password = passwordController.text.trim();
 
     if (username.isEmpty || username.length < 3 || username.length > 15) {
-      VxToast.show(context, msg: "Name must be between 3 and 15 characters.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Name must be between 3 and 15 characters.")),
+      );
       return;
     }
 
     if (!RegExp(r"^[a-zA-Z0-9]+@[a-zA-Z]+\.[a-zA-Z]+").hasMatch(email)) {
-      VxToast.show(context, msg: "Enter a valid email address.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Enter a valid email address.")),
+      );
       return;
     }
 
     if (!RegExp(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$").hasMatch(password)) {
-      VxToast.show(context, msg: "Password must be at least 8 characters, include an uppercase letter, a number, and a special character.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Password must be at least 8 characters, include an uppercase letter, a number, and a special character.")),
+      );
       return;
     }
 
     if (!_termsAccepted) {
-      VxToast.show(context, msg: "You must accept the terms and conditions.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("You must accept the terms and conditions.")),
+      );
       return;
     }
 
-    String role =  "Parent" ;
+    String role = "Parent";
 
     var regBody = {
       "username": username,
@@ -91,17 +98,24 @@ class _RegistrationState extends State<SignUpPage> {
 
       var jsonResponse = jsonDecode(response.body);
 
-      if (jsonResponse['success']) { // Check 'success' field here
-        VxToast.show(context, msg: jsonResponse['message'] ?? "Registered successfully!");
-        Navigator.push(context, MaterialPageRoute(builder: (context) => SignInPage()));
+      if (jsonResponse['success']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(jsonResponse['message'] ?? "Registered successfully!")),
+        );
+        Navigator.push(context, MaterialPageRoute(builder: (context) => ProviderSignInPage()));
       } else {
-        VxToast.show(context, msg: jsonResponse['message'] ?? "Something went wrong. Please try again.");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(jsonResponse['message'] ?? "Something went wrong. Please try again.")),
+        );
       }
     } catch (e) {
       print('Error occurred: $e');
-      VxToast.show(context, msg: "An error occurred. Please check your connection.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("An error occurred. Please check your connection.")),
+      );
     }
   }
+
   void Googlesignup() async {
     try {
       // Start Google Sign-In

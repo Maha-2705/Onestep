@@ -8,7 +8,6 @@ import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:cookie_jar/cookie_jar.dart';
 import 'package:dio/dio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:velocity_x/velocity_x.dart';
 import 'package:http/http.dart' as http;
 import 'package:sign_in_button/sign_in_button.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -37,12 +36,16 @@ class _SignInPageState extends State<ProviderSignInPage> {
     String password = passwordController.text.trim();
 
     if (email.isEmpty || !RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").hasMatch(email)) {
-      VxToast.show(context, msg: "Please enter a valid email address.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Please enter a valid email address.")),
+      );
       return;
     }
 
     if (password.isEmpty || password.length < 6) {
-      VxToast.show(context, msg: "Password must be at least 6 characters.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Password must be at least 6 characters.")),
+      );
       return;
     }
 
@@ -58,14 +61,9 @@ class _SignInPageState extends State<ProviderSignInPage> {
         options: Options(headers: {"Content-Type": "application/json"}),
       );
 
-      print('Response Status: ${response.statusCode}');
-      print('Response Headers: ${response.headers}');
-      print('Response Body: ${response.data}');
-
       if (response.statusCode == 200) {
         var jsonResponse = response.data;
 
-        // ✅ Correct way to extract cookies
         List<Cookie> cookies = await cookieJar.loadForRequest(Uri.parse("https://1steptest.vercel.app/server/auth/signin"));
         String? accessToken;
         String? refreshToken;
@@ -82,9 +80,6 @@ class _SignInPageState extends State<ProviderSignInPage> {
           final storage = FlutterSecureStorage();
           await storage.write(key: 'access_token', value: accessToken);
           await storage.write(key: 'refresh_token', value: refreshToken);
-
-          print("Extracted Access Token: $accessToken");
-          print("Extracted Refresh Token: $refreshToken");
         }
 
         var Id = jsonResponse['_id'];
@@ -92,29 +87,33 @@ class _SignInPageState extends State<ProviderSignInPage> {
         prefs.setString('ID', Id);
         prefs.setString('Access_token', accessToken ?? "");
 
-        print("Id: $Id");
-        print("access_token: $accessToken");
-
         var role = jsonResponse['role'];
         if (role != null && role['role'] == 'Provider') {
-          VxToast.show(context, msg: jsonResponse['message'] ?? "Login successful!");
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(jsonResponse['message'] ?? "Login successful!")),
+          );
 
           Navigator.pushReplacement(
             context,
             MaterialPageRoute(builder: (context) => ProviderDetailsPage(userId: Id)),
           );
         } else {
-          VxToast.show(context, msg: "You are not a Parent user.");
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("You are not a Parent user.")),
+          );
         }
       } else {
-        print('Error: Server returned status code ${response.statusCode}');
-        VxToast.show(context, msg: "Server error: ${response.statusCode}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Server error: ${response.statusCode}")),
+        );
       }
     } catch (e) {
-      print('Error occurred: $e');
-      VxToast.show(context, msg: "An error occurred. Please check your connection.");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("An error occurred. Please check your connection.")),
+      );
     }
   }
+
   void Googlesignup() async {
     try {
       // Start Google Sign-In

@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:intl_phone_field/intl_phone_field.dart';
 import 'package:http/http.dart' as http;
 import 'package:one_step/Auth/SignInPage.dart';
-import 'package:velocity_x/velocity_x.dart';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -61,10 +60,7 @@ class _MultiStepFormState extends State<DetailsPage> {
 
     String? googleToken = prefs.getString('google_access_token');
 
-    if ((token == null || token.isEmpty) && (googleToken == null || googleToken.isEmpty)) {
-      VxToast.show(context, msg: "Session expired! Please log in again.");
-      return;
-    }
+
 
     var regBody = {
       "isParent": true,
@@ -120,7 +116,7 @@ class _MultiStepFormState extends State<DetailsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(jsonResponse['message'] ?? "Parent details saved")),
         );
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ParentDashBoard()));
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ParentDashBoard(userId: widget.userId)));
       }
 
     } catch (e) {
