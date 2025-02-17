@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:one_step/Auth/Verifyotp.dart';
 
 import '../AppColors.dart';
 
@@ -31,7 +32,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
       print("📤 Sending request with email: $email");
 
       final response = await http.post(
-        Uri.parse("https://1steptest.vercel.app/server/auth/otppassword"),
+        Uri.parse("https://1stepdev.vercel.app/server/auth/otppassword"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({"email": email}),
       );
@@ -45,6 +46,13 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         if (data["status"] == true) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text("✅ OTP sent successfully! Check your email.")),
+          );
+          // Navigate to VerifyOtpPage and pass the email
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => OtpVerificationScreen(),
+            ),
           );
         } else {
           String errorMessage = data["message"] ?? "Failed to send OTP.";
@@ -74,6 +82,7 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor:Colors.white ,
       appBar: AppBar(
         title: Text("Reset Password", style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
@@ -123,12 +132,12 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
                 ),
               ],
             ),
-            SizedBox(height: 30),
+            SizedBox(height: 50),
 
             // Send Button with Loading Indicator
             SizedBox(
               width: double.infinity,
-              height: 50,
+              height: 40,
               child: ElevatedButton(
                 onPressed: isLoading ? null : sendResetRequest,
                 style: ElevatedButton.styleFrom(

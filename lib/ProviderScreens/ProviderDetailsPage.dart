@@ -4,6 +4,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:one_step/ProviderScreens/ProviderDashBoard.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 
 import 'package:flutter/material.dart';
 
@@ -101,20 +102,31 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
     'In-home',
     'Virtual'
   ];
-
-
   Future<void> submitForm() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('Access_token');
     String? googleToken = prefs.getString('Google_access_token');
+
     print('Google Token: $googleToken');
 
     try {
-      // Retrieve user ID from SharedPreferences
+      // Check if an image is selected
+      String? imageUrl;
+      if (_profileImage != null) {
+        imageUrl = await uploadImageToFirebase(_profileImage!);
+        if (imageUrl == null) {
+          print("Image upload failed.");
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text("Image upload failed. Please try again.")),
+          );
+          return;
+        }
+      }
+
       // Collect all the data
       final Map<String, dynamic> requestBody = {
-        "userRef": widget.userId, // Include user ID in the request
-        "profilePicture": _profileImage != null ? _profileImage!.path : null,
+        "userRef": widget.userId,
+        "profilePicture": imageUrl, // Store uploaded image URL
         "fullName": providerNameController.text,
         "email": providerEmailController.text,
         "qualification": providerQualificationController.text,
@@ -125,7 +137,6 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
         "name": selectedServices,
         "therapytype": selectedServiceTypes,
         "regularPrice": providerFeeController.text,
-
         "address": {
           "addressLine1": providerAddressController.text,
           "street": providerStreetController.text,
@@ -134,12 +145,12 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
           "city": providerCityController.text,
           "pincode": providerPincodeController.text,
         },
-
         "timeSlots": selectedSlotsPerDay,
       };
 
       print('Sending request to server...');
       print('Request Body: $requestBody');
+
       // Construct Cookie Header
       String cookieHeader = "";
       if (token != null && token.isNotEmpty) {
@@ -148,7 +159,9 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
       if (googleToken != null && googleToken.isNotEmpty) {
         cookieHeader += "Google_access_token=$googleToken;";
       }
-      print('cookie token: $cookieHeader');
+
+      print('Cookie Token: $cookieHeader');
+
       // Send the request to the backend
       var response = await http.post(
         Uri.parse("https://1steptest.vercel.app/server/provider/create"),
@@ -168,9 +181,13 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(jsonResponse['message'] ?? "Provider details saved!")),
         );
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => ProviderDashBoard()));
+        Navigator.pushReplacement(
+            context, MaterialPageRoute(builder: (context) => ProviderDashBoard()));
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(jsonResponse['message'] ?? "Failed to save provider details.")),
+        );
       }
-
     } catch (e) {
       print('Error occurred: $e');
       ScaffoldMessenger.of(context).showSnackBar(
@@ -178,6 +195,26 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
       );
     }
   }
+
+  Future<String?> uploadImageToFirebase(File imageFile) async {
+    try {
+      FirebaseStorage storage = FirebaseStorage.instance;
+      String filePath = 'profile_pictures/${DateTime.now().millisecondsSinceEpoch}.png';
+      Reference ref = storage.ref().child(filePath);
+
+      UploadTask uploadTask = ref.putFile(
+        imageFile,
+        SettableMetadata(contentType: 'image/png'),
+      );
+
+      TaskSnapshot snapshot = await uploadTask.whenComplete(() => {});
+      return await snapshot.ref.getDownloadURL(); // Get the image URL
+    } catch (e) {
+      print('Upload error: $e');
+      return null;
+    }
+  }
+
 
   void _nextPage() {
     if (_currentPage < 8) {

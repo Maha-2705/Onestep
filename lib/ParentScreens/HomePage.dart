@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../AppColors.dart';
+import '../ParentScreens/search_page.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -90,13 +91,20 @@ class _HomePageState extends State<HomePage> {
                         ),
                       ],
                     ),
-                    child: TextField(
-                      decoration: InputDecoration(
-                        hintText: 'Search for trusted doctors near you...',
-                        border: InputBorder.none,
-                        contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
-                        prefixIcon: Icon(Icons.search, color: AppColors.greycolor),
-                        suffixIcon: Icon(Icons.filter_list, color: AppColors.greycolor),
+                    child: GestureDetector(
+                      onTap: () {
+
+                      },
+                      child: AbsorbPointer( // Prevents keyboard from opening when tapped
+                        child: TextField(
+                          decoration: InputDecoration(
+                            hintText: 'Search for trusted doctors near you...',
+                            border: InputBorder.none,
+                            contentPadding: EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                            prefixIcon: Icon(Icons.search, color: AppColors.greycolor),
+                            suffixIcon: Icon(Icons.filter_list, color: AppColors.greycolor),
+                          ),
+                        ),
                       ),
                     ),
                   ),
