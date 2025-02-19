@@ -131,7 +131,7 @@ class _SearchPageState extends State<SearchPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[200],
+      backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: AppColors.primaryColor,
         title: Row(
@@ -161,7 +161,7 @@ class _SearchPageState extends State<SearchPage> {
             _buildSearchBox(),
             SizedBox(height: 20),
             Text(
-              'Searching Results',
+              'Search Results',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
             SizedBox(height: 10),
@@ -199,82 +199,74 @@ class _SearchPageState extends State<SearchPage> {
       ),
     );
   }
-
-
+  final GlobalKey _searchBoxKey = GlobalKey();
   Widget _buildSearchBox() {
     return Center(
       child: Container(
-        padding: EdgeInsets.all(12),
+        key: _searchBoxKey, // Assign key to find its position
+        padding: EdgeInsets.symmetric(horizontal: 10, vertical: 2),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(20),
+          color: Colors.grey[200],
+          borderRadius: BorderRadius.circular(10), // Smaller radius
           boxShadow: [
             BoxShadow(
               color: Colors.black12,
-              blurRadius: 10,
-              spreadRadius: 2,
+              blurRadius: 2, // Reduced blur
+              spreadRadius: 1, // Reduced spread
             ),
           ],
         ),
         child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            SizedBox(width: 10),
-
-            Flexible(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'What',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  SizedBox(height: 5),
-                  Container(
-                    width: 500, // Set your desired width
-                    child: TextField(
-                      controller: _whatController,
-                      onTap: () {
-                        _showServicePopup(context);
-                      },
-                      decoration: InputDecoration(
-                        hintText: 'Diagnostic Evaluation',
-                        border: InputBorder.none,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            SizedBox(width: 30),
-            Flexible(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Where',
-                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-                  ),
-                  SizedBox(height: 5),
-                  TextField(
-                    controller: _whereController,
-                    decoration: InputDecoration(
-                      hintText: 'Chennai',
-                      border: InputBorder.none,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+            Icon(Icons.health_and_safety_outlined, color: Colors.grey, size: 18), // Smaller icon
+            SizedBox(width: 6),
             Container(
+              width: 140, // Fixed width
+              child: TextField(
+                controller: _whatController,
+                readOnly: true,
+                onTap: () {
+                  _showServicePopup(context);
+                },
+                decoration: InputDecoration(
+                  hintText: 'Services', // Hint text for services
+                  hintStyle: TextStyle(fontSize: 14, color: Colors.grey),
+                  border: InputBorder.none, // No border or underline
+                  isDense: true, // Reduce height
+                  contentPadding: EdgeInsets.symmetric(vertical: 8), // Adjust padding
+                ),
+              ),
+            ),
+
+
+
+            VerticalDivider(color: Colors.grey),
+            Icon(Icons.location_on, color: Colors.grey, size: 18), // Smaller icon
+            SizedBox(width: 6),
+            Expanded(
+              child: TextField(
+                controller: _whereController,
+                decoration: InputDecoration(
+                  hintText: 'City', // Hint text for city
+                  hintStyle: TextStyle(fontSize: 14, color: Colors.grey),
+                  border: InputBorder.none,
+                ),
+              ),
+            ),
+            SizedBox(width: 6),
+            Container(
+              width: 30, // Set fixed width
+              height: 30, // Set fixed height
+              padding: EdgeInsets.all(4), // Adjusted padding
               decoration: BoxDecoration(
                 color: AppColors.primaryColor,
-                shape: BoxShape.circle,
+                borderRadius: BorderRadius.circular(4), // Smaller background radius
               ),
               child: IconButton(
-                icon: Icon(Icons.search, color: Colors.white),
+                icon: Icon(Icons.search, color: Colors.white, size: 20), // Smaller search icon
                 onPressed: _searchService,
+                padding: EdgeInsets.zero, // Remove extra padding
+                constraints: BoxConstraints(), // Remove default constraints
               ),
             ),
           ],
@@ -282,6 +274,7 @@ class _SearchPageState extends State<SearchPage> {
       ),
     );
   }
+
 
   Widget _buildServiceCard(Map<String, dynamic> service) {
     return Card(
@@ -411,41 +404,74 @@ class _SearchPageState extends State<SearchPage> {
       ),
     );
   }
+  OverlayEntry? _overlayEntry;
 
   void _showServicePopup(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text("Select Service"),
-          content: Container(
-            width: double.maxFinite, // Ensures it takes full width
-            constraints: BoxConstraints(
-              maxHeight: 300, // Set medium height
+    final overlay = Overlay.of(context);
+    final renderBox = _searchBoxKey.currentContext?.findRenderObject() as RenderBox?;
+
+    if (renderBox == null) return; // Prevent crash if the widget is not found
+
+    final offset = renderBox.localToGlobal(Offset.zero);
+
+    _overlayEntry?.remove(); // Remove any existing overlay before adding a new one
+
+    _overlayEntry = OverlayEntry(
+      builder: (context) => Positioned(
+        left: offset.dx,
+        top: offset.dy + renderBox.size.height + 7,
+        width: renderBox.size.width,
+        child: Material(
+          color: Colors.transparent,
+          child: Container(
+            height: 250,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4, spreadRadius: 1)],
             ),
-            child: SingleChildScrollView(
-              child: ListBody(
-                children: services.map((service) {
-                  return ListTile(
-                    leading: Text(
-                      "•", // Bullet symbol
-                      style: TextStyle(fontSize: 18),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Expanded(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      children: services.map((service) {
+                        return ListTile(
+                          title: Text(service["label"]),
+                          onTap: () {
+                            _overlayEntry?.remove(); // Close the overlay
+                            _overlayEntry = null;
+                            setState(() {
+                              _whatController.text = service["value"];
+                            });
+                          },
+                        );
+                      }).toList(),
                     ),
-                    title: Text(service["label"]),
-                    onTap: () {
-                      Navigator.pop(context);
-                      setState(() {
-                        _whatController.text = service["value"];
-                      });
-                    },
-                  );
-                }).toList(),
-              ),
+                  ),
+                ),
+              ],
             ),
           ),
-        );
-      },
+        ),
+      ),
     );
+
+    overlay.insert(_overlayEntry!);
+  }
+
+  /// Call this method when navigating away or disposing the screen
+  void _removeOverlay() {
+    _overlayEntry?.remove();
+    _overlayEntry = null;
+  }
+
+  /// Override dispose method if using StatefulWidget
+  @override
+  void dispose() {
+    _removeOverlay(); // Ensure overlay is removed when the screen is destroyed
+    super.dispose();
   }
 
 
