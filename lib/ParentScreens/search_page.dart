@@ -208,6 +208,7 @@ class _SearchPageState extends State<SearchPage> {
         decoration: BoxDecoration(
           color: Colors.grey[200],
           borderRadius: BorderRadius.circular(10), // Smaller radius
+          border: Border.all(color: Colors.grey.shade300, width: 1.5), // Added border
           boxShadow: [
             BoxShadow(
               color: Colors.black12,
@@ -237,9 +238,6 @@ class _SearchPageState extends State<SearchPage> {
                 ),
               ),
             ),
-
-
-
             VerticalDivider(color: Colors.grey),
             Icon(Icons.location_on, color: Colors.grey, size: 18), // Smaller icon
             SizedBox(width: 6),
@@ -406,6 +404,8 @@ class _SearchPageState extends State<SearchPage> {
   }
   OverlayEntry? _overlayEntry;
 
+  String? _selectedService; // Add this at the top of your class
+
   void _showServicePopup(BuildContext context) {
     final overlay = Overlay.of(context);
     final renderBox = _searchBoxKey.currentContext?.findRenderObject() as RenderBox?;
@@ -438,13 +438,19 @@ class _SearchPageState extends State<SearchPage> {
                     child: Column(
                       children: services.map((service) {
                         return ListTile(
-                          title: Text(service["label"]),
+                          title: Text(
+                            service["label"],
+                            style: TextStyle(
+                              color: _selectedService == service["value"] ? AppColors.primaryColor : Colors.black, // Change color if selected
+                            ),
+                          ),
                           onTap: () {
-                            _overlayEntry?.remove(); // Close the overlay
-                            _overlayEntry = null;
                             setState(() {
+                              _selectedService = service["value"]; // Store selected item
                               _whatController.text = service["value"];
                             });
+                            _overlayEntry?.remove(); // Close the overlay
+                            _overlayEntry = null;
                           },
                         );
                       }).toList(),

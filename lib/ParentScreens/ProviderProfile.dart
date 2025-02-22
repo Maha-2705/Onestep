@@ -2,8 +2,10 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:one_step/ParentScreens/Bookingslot.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../AppColors.dart';
+import 'ReviewPage.dart';
 
 class DoctorProfilePage extends StatefulWidget {
   final String providerId;
@@ -120,7 +122,7 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text("Doctor Details"),
+        title: Text("Therapist Details"),
         backgroundColor: Colors.white,
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.black),
@@ -317,7 +319,10 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    // TODO: Navigate to review submission page
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => ReviewPage(providerId:widget.providerId)),
+                    );
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: Colors.white),
                   child: Text("ADD REVIEW"),
@@ -334,8 +339,13 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
                   backgroundColor: AppColors.primaryColor,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
                 ),
-                onPressed: () {},
-                child: Text('Booking a Slot', style: TextStyle(fontSize: 16, color: Colors.white)),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => BookSlotPage(providerId:widget.providerId)),
+                  );
+                },
+                child: Text('Book a Slot', style: TextStyle(fontSize: 16, color: Colors.white)),
               ),
             ),
           ],
