@@ -1,335 +1,620 @@
+import 'dart:async';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
-import 'package:one_step/AppColors.dart';
 import 'package:intl/intl.dart';
-
-import 'package:table_calendar/table_calendar.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:one_step/AppColors.dart';
 
 class BookSlotPage extends StatefulWidget {
   final String providerId;
 
   BookSlotPage({required this.providerId});
+
   @override
-  _BookSlotPageState createState() => _BookSlotPageState();
+  _BookingPageState createState() => _BookingPageState();
 }
 
-class _BookSlotPageState extends State<BookSlotPage> {
-  TextEditingController patientNameController = TextEditingController();
-  CalendarFormat _calendarFormat = CalendarFormat.week;
-  DateTime _selectedDay = DateTime.now();
-  DateTime _focusedDay = DateTime.now();
-  bool isSomeoneElse = false;
-  int selectedCategory = 0; // 0: Morning, 1: Afternoon, 2: Night
-  String? selectedTime;
-  void _changeMonth(bool isNext) {
-    setState(() {
-      _focusedDay = DateTime(
-        _focusedDay.year,
-        _focusedDay.month + (isNext ? 1 : -1), // Move forward or backward by 1 month
-        1,
-      );
-    });
+class _BookingPageState extends State<BookSlotPage> {
+  // Controllers for text fields
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController emailController = TextEditingController();
+  final TextEditingController noteController = TextEditingController();
+
+  // Controllers for dropdowns
+  String? selectedService;
+  String? selectedSessionType;
+  DateTime selectedDate = DateTime.now();
+  DateTime currentMonth = DateTime.now();
+  int selectedTabIndex = 1; // Default selected tab (Afternoon)
+  int selectedTimeIndex = -1; // No time slot selected initially
+  Map<String, dynamic>? providerDetails;
+  bool isLoading = true;
+  List<String> tabs = ["☀ Morning", "🌞 Afternoon", "🌙 Evening"];
+
+
+  List<DateTime> getDatesForMonth(DateTime currentMonth) {
+    List<DateTime> days = [];
+    int daysInMonth =
+        DateTime(currentMonth.year, currentMonth.month + 1, 0).day;
+    for (int i = 1; i <= daysInMonth; i++) {
+      days.add(DateTime(currentMonth.year, currentMonth.month, i));
+    }
+    return days;
   }
-  Map<int, List<String>> slotTimes = {
-    0: [
-      '08:00 AM',
-      '08:30 AM',
-      '09:00 AM',
-      '09:30 AM',
-      '10:00 AM',
-      '10:30 AM',
-      '11:00 AM',
-      '11:30 AM'
-    ], // Morning slots
-    1: [
-      '12:00 PM',
-      '12:30 PM',
-      '01:00 PM',
-      '01:30 PM',
-      '02:00 PM',
-      '02:30 PM',
-      '03:00 PM',
-      '03:30 PM'
-    ], // Afternoon slots
-    2: [
-      '06:00 PM',
-      '06:30 PM',
-      '07:00 PM',
-      '07:30 PM',
-      '08:00 PM',
-      '08:30 PM',
-      '09:00 PM',
-      '09:30 PM'
-    ] // Night slots
-  };
+  @override
+  void initState() {
+    super.initState();
+    fetchProviderDetails();
+    selectedDay = DateTime.now(); // Initialize with the current date
+    print("Selected Date: ${DateFormat('yyyy-MM-dd').format(selectedDay!)}");
+    print("Selected Day: ${DateFormat('EEEE').format(selectedDay!)}");
+  }
+
+  Future<void> sendRequest() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? patientId = prefs.getString('user_id');
+    String? token = prefs.getString('access_token');
+    String? googleToken = prefs.getString('google_access_token');
+
+    try {
+      String cookieHeader = "";
+      if (token != null && token.isNotEmpty) {
+        cookieHeader += "access_token=$token;";
+      }
+      if (googleToken != null && googleToken.isNotEmpty) {
+        cookieHeader += "google_access_token=$googleToken;";
+      }
+      String formattedDate = DateFormat('yyyy-MM-dd').format(selectedDate!);
+
+      // ✅ Prevent errors if no time slot is selected
+      String selectedSlotTime = (selectedTimeIndex >= 0 && selectedTimeIndex < slots.length)
+          ? slots[selectedTimeIndex]
+          : "";
+
+      // Request Data
+      Map<String, dynamic> requestData = {
+        "patient": patientId,
+        "provider": widget.providerId,
+        "patientName": nameController.text,
+        "scheduledTime": {
+          "slot": selectedSlotTime, // ✅ Store the actual time slot value
+          "date": formattedDate,
+        },
+        "email": emailController.text,
+        "note": noteController.text,
+        "service": selectedService,
+        "sessionType": selectedSessionType,
+        "status": "pending",
+      };
+
+      final response = await http.post(
+        Uri.parse("https://1steptest.vercel.app/server/booking/bookings"),
+        headers: {
+          "Content-Type": "application/json",
+          if (cookieHeader.isNotEmpty) "Cookie": cookieHeader,
+        },
+        body: jsonEncode(requestData),
+      );
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        print("Successfully Booked: ${response.body}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("✅ Successfully Booked...")),
+        );
+      } else {
+        print("Failed: ${response.statusCode} - ${response.body}");
+      }
+    } catch (e) {
+      if (e is TimeoutException) {
+        print("⏳ Request timed out! Please check your network.");
+      } else {
+        print("❌ Error fetching provider details: $e");
+      }
+    }
+  }
+
+
+  Future<void> fetchProviderDetails() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('access_token');
+    String? googleToken = prefs.getString('google_access_token');
+
+    try {
+      String cookieHeader = "";
+      if (token != null && token.isNotEmpty) {
+        cookieHeader += "access_token=$token;";
+      }
+      if (googleToken != null && googleToken.isNotEmpty) {
+        cookieHeader += "google_access_token=$googleToken;";
+      }
+
+      var response = await http
+          .get(
+        Uri.parse("https://1steptest.vercel.app/server/provider/get/${widget
+            .providerId}"),
+        headers: {
+          "Content-Type": "application/json",
+          if (cookieHeader.isNotEmpty) "Cookie": cookieHeader,
+        },
+      )
+          .timeout(Duration(seconds: 10)); // ⏳ Timeout set to 10 seconds
+      print('Response Body: ${response.body}');
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        setState(() {
+          providerDetails = jsonDecode(response.body);
+          isLoading = false;
+        });
+      } else {
+        print("❌ Failed to fetch provider details: ${response.body}");
+      }
+    } catch (e) {
+      if (e is TimeoutException) {
+        print("⏳ Request timed out! Please check your network.");
+      } else {
+        print("❌ Error fetching provider details: $e");
+      }
+    }
+  }
+
+  DateTime? selectedDay; // Declare local variable
+
+
   @override
   Widget build(BuildContext context) {
+    List<DateTime> days = getDatesForMonth(selectedDate);
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('Get Schedule', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: Text("Book a Slot"),
         backgroundColor: Colors.white,
-        elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
         ),
       ),
       body: SingleChildScrollView(
-        padding: EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              child: Row(
+        child: Padding(
+          padding: EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildDoctorInfo(),
+              SizedBox(height: 20),
+              Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  // Left Arrow - Previous Month
-                  IconButton(
-                    icon: Icon(Icons.arrow_back_ios),
-                    onPressed: () => _changeMonth(false),
-                  ),
-
-                  // Display Month & Year
                   Text(
-                    DateFormat('MMMM yyyy').format(_focusedDay), // Example: "February 2025"
-                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                    "Select Date",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-
-                  // Right Arrow - Next Month
-                  IconButton(
-                    icon: Icon(Icons.arrow_forward_ios),
-                    onPressed: () => _changeMonth(true),
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.arrow_back_ios, size: 18,
+                            color: AppColors.primaryColor),
+                        onPressed: () {
+                          setState(() {
+                            currentMonth = DateTime(
+                                currentMonth.year, currentMonth.month - 1, 1);
+                            selectedDate = currentMonth; // Update selected date
+                          });
+                        },
+                      ),
+                      Text(
+                        DateFormat('MMMM yyyy').format(currentMonth),
+                        style: TextStyle(fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primaryColor),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.arrow_forward_ios, size: 18,
+                            color: AppColors.primaryColor),
+                        onPressed: () {
+                          setState(() {
+                            currentMonth = DateTime(
+                                currentMonth.year, currentMonth.month + 1, 1);
+                            selectedDate = currentMonth; // Update selected date
+                          });
+                        },
+                      ),
+                    ],
                   ),
                 ],
               ),
-            ),
+              SizedBox(height: 10),
+              // Generate a list of dates starting from today for the next 30 days
 
-            // Calendar Widget
-            TableCalendar(
-              focusedDay: _focusedDay,
-              firstDay: DateTime.utc(2020, 1, 1),
-              lastDay: DateTime.utc(2030, 12, 31),
-              calendarFormat: _calendarFormat,
-              selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-              onDaySelected: (selectedDay, focusedDay) {
-                setState(() {
-                  _selectedDay = selectedDay;
-                  _focusedDay = focusedDay;
-                });
-              },
-              headerVisible: false, // Hide default header
+              SizedBox(
+                height: 70,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: days.length,
+                  itemBuilder: (context, index) {
+                    bool isSelected = selectedDay != null &&
+                        selectedDay!.day == days[index].day &&
+                        selectedDay!.month == days[index].month &&
+                        selectedDay!.year == days[index].year;
 
-              calendarBuilders: CalendarBuilders(
-                dowBuilder: (context, day) {
-                  final weekDay = DateFormat('E').format(day); // Get weekday name
-                  return Center(
-                    child: Text(
-                      weekDay.toUpperCase(), // Example: MON, TUE
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.grey,
+                    return GestureDetector(
+                      onTap: () {
+                        setState(() {
+                          DateTime today = DateTime.now();
+                          if (days[index].isBefore(DateTime(today.year, today.month, today.day))) {
+                            _showOverdueToast();
+                          } else {
+                            selectedDay = days[index]; // Store selected date in local variable
+
+                            // Reset selected tab and time index
+                            selectedTabIndex = 0; // Default to Morning
+                            selectedTimeIndex = -1; // Reset time selection
+
+                            // Update and categorize slots for the selected day
+                            _categorizeTimeSlots();
+
+                            // Debugging logs
+                            print("Selected Date: ${DateFormat('yyyy-MM-dd').format(selectedDay!)}");
+                            print("Selected Day: ${DateFormat('EEEE').format(selectedDay!)}");
+                          }
+                        });
+                      },
+                      child: Container(
+                        margin: EdgeInsets.symmetric(horizontal: 8),
+                        padding: EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppColors.primaryColor : Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isSelected ? AppColors.primaryColor : Colors.grey.shade300,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.grey.shade200,
+                              blurRadius: 5,
+                              offset: Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              DateFormat('EEE').format(days[index]), // Day Name
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : Colors.grey,
+                              ),
+                            ),
+                            SizedBox(height: 5),
+                            Text(
+                              DateFormat('dd').format(days[index]), // Day Number
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : Colors.black,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  );
-                },
-              ),
-
-              calendarStyle: CalendarStyle(
-                todayDecoration: BoxDecoration(
-                  color: Colors.grey.shade200, // No special highlight for today
-                  shape: BoxShape.circle,
-                ),
-                selectedDecoration: BoxDecoration(
-                  color: AppColors.primaryColor, // Fill color for selected date
-                  shape: BoxShape.circle,
-                ),
-                selectedTextStyle: TextStyle(
-                  color: Colors.white, // White text for selected date
-                  fontWeight: FontWeight.bold,
-                ),
-                defaultTextStyle: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-                weekendTextStyle: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black, // Color for weekends
+                    );
+                  },
                 ),
               ),
-              daysOfWeekVisible: true, // Show weekdays above dates
-            ),
 
-            SizedBox(height: 20),
-            Text('Available Slots', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            SizedBox(height: 10),
-            _buildCategorySelector(),
-            SizedBox(height: 30),
-            _buildTimeSlots(),
-            SizedBox(height: 30),
 
-            // Fill the Details Heading
-            Text('Fill the Details', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            SizedBox(height: 10),
+              SizedBox(height: 20),
+              Divider(height: 30),
+              Text(
+                "Available Timeslots",
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              SizedBox(height: 10),
 
-            // Patient Name TextField
-            _buildTextField(label: "Patient Name*", hintText: "Enter Patient Name"),
-            SizedBox(height: 10),
+              _buildTabSelector(),
+              SizedBox(height: 25),
+              _buildTimeSlots(),
+              SizedBox(height: 20),
+              Divider(height: 30),
 
-            // Dropdown for Services
-            _buildDropdown(
-              label: "How can we help your family?*",
-              items: [ 'Diagnostic Evaluation',
-                'Occupational Therapy',
-                'Dance Movement',
-                'Speech Therapy',
-                'Counselling',
-                'School-Based Service',
-                'Music Therapy',
-                'Art As Therapy',
-                'ABA Therapy',
-                'Social Skills Group'],
-            ),
-            SizedBox(height: 10),
-
-            // Email & Session Type Row
-            Row(
-              children: [
-                Expanded(child: _buildTextField(label: "Email*", hintText: "Enter Email")),
-                SizedBox(width: 10),
-                Expanded(
-                  child: _buildDropdown(
-                    label: "Session Type*",
-                    items: ["In-Clinic", "In-Home","Virtual"],
+              _buildPatientForm(),
+              SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                height: 40,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryColor,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12.0)),
                   ),
+                  onPressed: () {
+                    sendRequest();
+                  },
+                  child: Text('Book a Slot', style: TextStyle(fontSize: 16, color: Colors.white)),
                 ),
-              ],
-            ),
-            SizedBox(height: 10),
-
-            // Notes TextField
-            _buildTextField(label: "Note*", hintText: "Enter Notes", maxLines: 3),
-            SizedBox(height: 20),
-
-            // Book a Slot Button
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {},
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8.0),
-                  ),
-                ),
-                child: Text("BOOK A SLOT", style: TextStyle(color: Colors.white)),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
-  // Common Function for TextFields
-  Widget _buildTextField({required String label, required String hintText, int maxLines = 1}) {
-    return TextField(
-      maxLines: maxLines,
-      decoration: InputDecoration(
-        labelText: label,
-        hintText: hintText,
-        filled: true,
-        fillColor: Colors.grey[200],
-        border: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.grey.shade200), // Light Grey Border
-          borderRadius: BorderRadius.circular(8.0),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.grey.shade200), // Light Grey Border
-          borderRadius: BorderRadius.circular(8.0),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: AppColors.primaryColor), // Blue Border on Focus
-          borderRadius: BorderRadius.circular(8.0),
-        ),
-      ),
+  void _showOverdueToast() {
+    Fluttertoast.showToast(
+      msg: "Sorry, this date is overdue.",
+      toastLength: Toast.LENGTH_SHORT,
+      gravity: ToastGravity.BOTTOM,
+      backgroundColor: Colors.black, // Red background
+      textColor: Colors.red,
+      fontSize: 16.0,
     );
   }
+  Widget _buildDoctorInfo() {
 
-  // Common Function for Dropdowns
-  Widget _buildDropdown({required String label, required List<String> items}) {
-    return DropdownButtonFormField(
-      decoration: InputDecoration(
-        labelText: label,
-        filled: true,
-        fillColor: Colors.grey[200],
-        border: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.grey.shade200), // Light Grey Border
-          borderRadius: BorderRadius.circular(8.0),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.grey.shade200), // Light Grey Border
-          borderRadius: BorderRadius.circular(8.0),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderSide: BorderSide(color: AppColors.primaryColor), // Blue Border on Focus
-          borderRadius: BorderRadius.circular(8.0),
-        ),
-      ),
-      items: items.map((item) => DropdownMenuItem(value: item, child: Text(item))).toList(),
-      onChanged: (value) {},
-    );
-  }
-  Widget _buildCategorySelector() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        _categoryTab('☀️ Morning', 0),
-        _categoryTab('🌟 Afternoon', 1),
-        _categoryTab('🌙 Night', 2),
+        CircleAvatar(
+          radius: 40,
+          backgroundImage: providerDetails?["profilePicture"] != null
+              ? NetworkImage(providerDetails?["profilePicture"]) // Network image
+              : AssetImage('') as ImageProvider, // Fallback image
+        ),
+        SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                providerDetails?["fullName"] ?? "Unknown", // Full Name
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              Text(
+                providerDetails?["name"] is List
+                    ? (providerDetails?["name"] as List).join(", ") // Convert list to a string
+                    : providerDetails?["name"] ?? "Specialization not available",
+                style: TextStyle(fontSize: 14, color: Colors.grey),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2, // Allows the text to occupy up to 2 lines
+                softWrap: true, // Enables wrapping within the available space
+              ),
+              SizedBox(height: 5),
+
+
+              Row(
+                children: [
+                  Icon(Icons.location_on, color: AppColors.primaryColor, size: 16),
+                  Text(
+                    providerDetails?["address"]?["city"] ?? "",
+                    style: TextStyle(fontSize: 14),
+                  ),
+                ],
+              ),
+              SizedBox(height: 5),
+
+
+            ],
+          ),
+        ),
       ],
     );
   }
 
-  Widget _categoryTab(String text, int index) {
-    return GestureDetector(
-      onTap: () {
-        setState(() => selectedCategory = index);
-      },
-      child: Container(
-        padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
-        decoration: BoxDecoration(
-          color: selectedCategory == index ? AppColors.primaryColor : Colors.grey[200],
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Text(text, style: TextStyle(color: selectedCategory == index ? Colors.white : Colors.black)),
-      ),
-    );
-  }
 
-  Widget _buildTimeSlots() {
-    return Wrap(
-      spacing: 8.0,
-      runSpacing: 8.0,
-      children: slotTimes[selectedCategory]!.map((time) {
-        bool isSelected = selectedTime == time;
+
+
+
+  Widget _buildTabSelector() {
+    List<String> tabs = ["☀ Morning", "🌞 Afternoon", "🌙 Evening"];
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: List.generate(3, (index) {
         return GestureDetector(
           onTap: () {
             setState(() {
-              selectedTime = time;
+              selectedTabIndex = index;
+              selectedTimeIndex = -1; // Reset selected time slot when changing tabs
             });
           },
           child: Container(
-            padding: EdgeInsets.symmetric(vertical: 10, horizontal: 15),
+            padding: EdgeInsets.symmetric(vertical: 10, horizontal: 20),
             decoration: BoxDecoration(
-              color: isSelected ? AppColors.primaryColor : Colors.grey[200],
-              borderRadius: BorderRadius.circular(10),
+              color: selectedTabIndex == index ? AppColors.primaryColor: Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(20),
             ),
-            child: Text(time, style: TextStyle(color: isSelected ? Colors.white : Colors.black)),
+            child: Text(
+              tabs[index],
+              style: TextStyle(color: selectedTabIndex == index ? Colors.white : Colors.black),
+            ),
           ),
         );
-      }).toList(),
+      }),
+    );
+  }
+  Map<String, List<String>> categorizedSlots = {
+    "Morning": [],
+    "Afternoon": [],
+    "Evening": [],
+  };
+
+  void _categorizeTimeSlots() {
+    if (selectedDay == null) return;
+
+    String selectedDayName = DateFormat('EEEE').format(selectedDay!);
+
+    // Check if 'timeSlots' exists and has data for the selected day
+    if (providerDetails?["timeSlots"] != null &&
+        providerDetails?["timeSlots"][selectedDayName] != null) {
+      List<String> slots = List<String>.from(
+          providerDetails?["timeSlots"][selectedDayName] ?? []);
+
+      // Clear previous data
+      categorizedSlots["Morning"] = [];
+      categorizedSlots["Afternoon"] = [];
+      categorizedSlots["Evening"] = [];
+
+      for (String time in slots) {
+        DateTime parsedTime = DateFormat("hh:mm a").parse(time);
+
+        if (parsedTime.hour < 12) {
+          categorizedSlots["Morning"]!.add(time);
+        } else if (parsedTime.hour < 18) {
+          categorizedSlots["Afternoon"]!.add(time);
+        } else {
+          categorizedSlots["Evening"]!.add(time);
+        }
+      }
+    }
+  }
+  List<String> slots = [];
+
+  Widget _buildTimeSlots() {
+    String timeCategory = tabs[selectedTabIndex].split(" ")[1]; // Extract Morning, Afternoon, or Evening
+    slots = categorizedSlots[timeCategory] ?? []; // ✅ Update class-level slots variable
+
+    if (slots.isEmpty) {
+      return Center(
+        child: Text(
+          "No slots available",
+          style: TextStyle(color: Colors.grey, fontSize: 16, fontWeight: FontWeight.bold),
+        ),
+      );
+    }
+
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: List.generate(slots.length, (index) {
+        return GestureDetector(
+          onTap: () {
+            setState(() {
+              selectedTimeIndex = index;
+            });
+          },
+          child: Container(
+            padding: EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: selectedTimeIndex == index ? Color(0xFFE2D7EA) : Colors.grey.shade200,
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Text(
+              slots[index],
+              style: TextStyle(color: selectedTimeIndex == index ? AppColors.primaryColor : Colors.black),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+
+  Widget _buildPatientForm() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildTextField("Patient’s Name", nameController),
+        _buildDropdownField("Services", [
+          'Diagnostic Evaluation',
+          'Occupational Therapy',
+          'Dance Movement',
+          'Speech Therapy',
+          'Counselling',
+          'School-Based Service',
+          'Music Therapy',
+          'Art As Therapy',
+          'ABA Therapy',
+          'Social Skills Group'
+        ], selectedService, (newValue) {
+          setState(() {
+            selectedService = newValue;
+          });
+        }),
+        Row(
+          children: [
+            Expanded(child: _buildTextField("Email", emailController)),
+            SizedBox(width: 10),
+            Expanded(
+              child: _buildDropdownField("Session Type", [
+                "Virtual",
+                "In Home",
+                "In Clinic"
+              ], selectedSessionType, (newValue) {
+                setState(() {
+                  selectedSessionType = newValue;
+                });
+              }),
+            ),
+          ],
+        ),
+        _buildTextField("Note", noteController, maxLines: 3),
+      ],
+    );
+  }
+
+  Widget _buildDropdownField(String label, List<String> options, String? selectedValue, ValueChanged<String?> onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+        SizedBox(height: 5),
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: DropdownButtonFormField<String>(
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.symmetric(vertical: 10),
+            ),
+            hint: Text("Select $label"),
+            value: selectedValue,
+            isExpanded: true,
+            menuMaxHeight: 200,
+            alignment: Alignment.centerLeft,
+            items: options.map((String value) {
+              return DropdownMenuItem<String>(
+                value: value,
+                child: Padding(
+                  padding: EdgeInsets.only(top: 0),
+                  child: Text(value, overflow: TextOverflow.ellipsis),
+                ),
+              );
+            }).toList(),
+            onChanged: onChanged,
+          ),
+        ),
+        SizedBox(height: 5),
+      ],
+    );
+  }
+
+  Widget _buildTextField(String label, TextEditingController controller, {int maxLines = 1}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
+        SizedBox(height: 5),
+        Container(
+          padding: EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade200,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: TextField(
+            controller: controller,
+            maxLines: maxLines,
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              hintText: "Enter $label",
+            ),
+          ),
+        ),
+        SizedBox(height: 10),
+      ],
     );
   }
 }

@@ -36,6 +36,7 @@ class _RegistrationState extends State<ProviderSignUpPage> {
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
   TextEditingController nameController = TextEditingController();
+  bool _isObscure = true; // Add this variable to track password visibility
 
   bool _termsAccepted = false;
 
@@ -326,24 +327,36 @@ class _RegistrationState extends State<ProviderSignUpPage> {
                 ),
                 const SizedBox(height: 20),
                 // Password Field
-                TextField(
-                  style: TextStyle(
-                    fontFamily:'afacad',
-                  ),
-                  controller: passwordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    hintText: 'Strong Password',
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                    fillColor:AppColors.textfieldcolor,
-                  ),
-                ),
-                const SizedBox(height: 20),
+
+          TextField(
+          style: TextStyle(
+          fontFamily: 'afacad',
+          ),
+          controller: passwordController,
+          obscureText: _isObscure,
+          decoration: InputDecoration(
+            hintText: 'Password',
+            prefixIcon: const Icon(Icons.lock_outline),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _isObscure ? Icons.visibility_off : Icons.visibility,
+              ),
+              onPressed: () {
+                setState(() {
+                  _isObscure = !_isObscure;
+                });
+              },
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.0),
+              borderSide: BorderSide.none,
+            ),
+            filled: true,
+            fillColor: AppColors.textfieldcolor,
+          ),
+        ),
+
+        const SizedBox(height: 20),
                 // Terms and Conditions Checkbox
                 Row(
                   children: [

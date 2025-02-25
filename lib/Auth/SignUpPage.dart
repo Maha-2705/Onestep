@@ -18,6 +18,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../ParentScreens/ParentDashBoard.dart';
 import 'ProviderSignInPage.dart';
 
 
@@ -29,7 +30,7 @@ class _RegistrationState extends State<SignUpPage> {
   final Dio dio = Dio();
   final FlutterSecureStorage storage = FlutterSecureStorage();
   final CookieJar cookieJar = CookieJar();
-
+  bool _isObscure = true;
   final GoogleSignIn _googleSignIn = GoogleSignIn();
 
   TextEditingController emailController = TextEditingController();
@@ -102,7 +103,7 @@ class _RegistrationState extends State<SignUpPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(jsonResponse['message'] ?? "Registered successfully!")),
         );
-        Navigator.push(context, MaterialPageRoute(builder: (context) => ProviderSignInPage()));
+        Navigator.push(context, MaterialPageRoute(builder: (context) => SignInPage()));
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(jsonResponse['message'] ?? "Something went wrong. Please try again.")),
@@ -115,7 +116,6 @@ class _RegistrationState extends State<SignUpPage> {
       );
     }
   }
-
   void Googlesignup() async {
     try {
       // Start Google Sign-In
@@ -167,7 +167,8 @@ class _RegistrationState extends State<SignUpPage> {
         var responseData = response.data;
 
         // ✅ Extract cookies
-        List<Cookie> cookies = await cookieJar.loadForRequest(Uri.parse("https://1steptest.vercel.app/server/auth/google"));
+        List<Cookie> cookies = await cookieJar.loadForRequest(
+            Uri.parse("https://1steptest.vercel.app/server/auth/google"));
         String? accessToken;
         String? refreshToken;
 
@@ -188,38 +189,81 @@ class _RegistrationState extends State<SignUpPage> {
           print("Extracted Refresh Token: $refreshToken");
         }
         var Id = responseData['_id'];
-
         SharedPreferences prefs = await SharedPreferences.getInstance();
-        prefs.setString('google_access_token', accessToken ?? "");
         prefs.setString('GoogleUserId', Id);
 
+        prefs.setString('google_access_token', accessToken ?? "");
         if (responseData is Map<String, dynamic>) {
           print("User data stored successfully!");
 
-          // Navigate to Details Page
-          Navigator.push(
+          // ✅ Call Parent API
+          var parentResponse = await dio.get(
+            "https://1steptest.vercel.app/server/parent/getParent/$Id",
+            options: Options(
+              headers: {
+                "Content-Type": "application/json",
+                "Cookie": "access_token=$accessToken",
+              },
+            ),
+          );
+
+          print("Parent API Response: ${parentResponse.data}");
+          print("Parent API Status Code: ${parentResponse.statusCode}");
+
+          if (parentResponse.statusCode == 200 && parentResponse.data != null) {
+            var parentData = parentResponse.data;
+
+            // ❌ If "status": false, move to DetailsPage
+            if (parentData.containsKey("status") &&
+                parentData["status"] == false) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => DetailsPage(userId: Id)),
+              );
+              return;
+            }
+
+            // ✅ If parentDetails exist, move to ParentDashBoard
+            if (parentData.containsKey("parentDetails")) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(
+                    "Login successful! Redirecting to Dashboard...")),
+              );
+
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => ParentDashBoard(userId: Id)),
+              );
+              return;
+            }
+          }
+
+          // ❌ If no valid parent details, move to DetailsPage
+
+
+          Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => DetailsPage(userId: Id)),
+            MaterialPageRoute(
+                builder: (context) => ParentDashBoard(userId: Id)),
           );
         } else {
-          print("Unexpected response format: $responseData");
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Signup failed: Unexpected response format")),
+            SnackBar(content: Text("Server error: ${response.statusCode}")),
           );
         }
-      } else {
-        print("Error: ${response.statusCode} - ${response.data}");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Signup failed: ${response.data}")),
-        );
+
       }
-    } catch (error) {
-      print("Google Sign-In Failed: $error");
+    }
+    catch (e) {
+      print("Error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Google Sign-In Failed: $error")),
+        SnackBar(content: Text("An error occurred. Please check your connection.")),
       );
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -324,24 +368,36 @@ class _RegistrationState extends State<SignUpPage> {
                 ),
                 const SizedBox(height: 20),
                 // Password Field
-                TextField(
-                  style: TextStyle(
-                    fontFamily:'afacad',
-                  ),
-                  controller: passwordController,
-                  obscureText: true,
-                  decoration: InputDecoration(
-                    hintText: 'Strong Password',
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                      borderSide: BorderSide.none,
-                    ),
-                    filled: true,
-                    fillColor: AppColors.textfieldcolor,
-                  ),
-                ),
-                const SizedBox(height: 20),
+
+          TextField(
+            style: TextStyle(
+            fontFamily: 'afacad',
+          ),
+          controller: passwordController,
+          obscureText: _isObscure,
+          decoration: InputDecoration(
+            hintText: 'Password',
+            prefixIcon: const Icon(Icons.lock_outline),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _isObscure ? Icons.visibility_off : Icons.visibility,
+              ),
+              onPressed: () {
+                setState(() {
+                  _isObscure = !_isObscure;
+                });
+              },
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.0),
+              borderSide: BorderSide.none,
+            ),
+            filled: true,
+            fillColor: AppColors.textfieldcolor,
+          ),
+        ),
+
+              const SizedBox(height: 20),
                 // Terms and Conditions Checkbox
                 Row(
                   children: [

@@ -30,6 +30,8 @@ class _SignInPageState extends State<ProviderSignInPage> {
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
   bool _isChecked = false;
+  bool _isObscure = true; // Add this variable to track password visibility
+
   late SharedPreferences prefs;
   void SignIn() async {
     String email = emailController.text.trim();
@@ -188,9 +190,9 @@ class _SignInPageState extends State<ProviderSignInPage> {
         var Id = responseData['_id'];
 
         SharedPreferences prefs = await SharedPreferences.getInstance();
-        prefs.setString('GoogleuserId', Id);
+        prefs.setString('Google_User_Id', Id);
 
-        prefs.setString('Google_access_token', accessToken ?? "");
+        prefs.setString('Google_token', accessToken ?? "");
         if (responseData is Map<String, dynamic>) {
           print("User data stored successfully!");
 
@@ -306,13 +308,23 @@ class _SignInPageState extends State<ProviderSignInPage> {
                 // Password TextField
                 TextField(
                   style: TextStyle(
-                    fontFamily:'afacad',
+                    fontFamily: 'afacad',
                   ),
                   controller: passwordController,
-                  obscureText: true,
+                  obscureText: _isObscure,
                   decoration: InputDecoration(
                     hintText: 'Password',
                     prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isObscure ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isObscure = !_isObscure;
+                        });
+                      },
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12.0),
                       borderSide: BorderSide.none,

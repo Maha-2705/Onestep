@@ -37,6 +37,7 @@ class _SignInPageState extends State<SignInPage> {
   TextEditingController passwordController = TextEditingController();
   bool _isChecked = false;
   late SharedPreferences prefs;
+  bool _isObscure = true; // Add this variable to track password visibility
 
 
   @override
@@ -50,7 +51,6 @@ class _SignInPageState extends State<SignInPage> {
   void initSharedPref() async{
     prefs = await SharedPreferences.getInstance();
   }
-
   void SignIn() async {
     String email = emailController.text.trim();
     String password = passwordController.text.trim();
@@ -70,8 +70,6 @@ class _SignInPageState extends State<SignInPage> {
     }
 
     var loginBody = {"email": email, "password": password};
-    final dio = Dio();
-    final cookieJar = CookieJar();
     dio.interceptors.add(CookieManager(cookieJar));
 
     try {
@@ -81,58 +79,92 @@ class _SignInPageState extends State<SignInPage> {
         options: Options(headers: {"Content-Type": "application/json"}),
       );
 
+      print("Login Response: ${response.data}");
+      print("Login Status Code: ${response.statusCode}");
+
       if (response.statusCode == 200) {
         var jsonResponse = response.data;
+        String? loginUserId = jsonResponse['_id'];
 
         List<Cookie> cookies = await cookieJar.loadForRequest(Uri.parse("https://1steptest.vercel.app/server/auth/signin"));
         String? accessToken;
-        String? refreshToken;
 
         for (var cookie in cookies) {
           if (cookie.name == "access_token") {
             accessToken = cookie.value;
-          } else if (cookie.name == "refresh_token") {
-            refreshToken = cookie.value;
           }
         }
 
-        if (accessToken != null && refreshToken != null) {
-          final storage = FlutterSecureStorage();
+        if (accessToken != null) {
           await storage.write(key: 'access_token', value: accessToken);
-          await storage.write(key: 'refresh_token', value: refreshToken);
         }
 
-        var Id = jsonResponse['_id'];
         SharedPreferences prefs = await SharedPreferences.getInstance();
-        prefs.setString('ID', Id);
+        prefs.setString('ID', loginUserId!);
         prefs.setString('access_token', accessToken ?? "");
 
-        var role = jsonResponse['role'];
-        if (role != null && role['role'] == 'Parent') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(jsonResponse['message'] ?? "Login successful!")),
-          );
+        // ✅ Call Parent API
+        var parentResponse = await dio.get(
+          "https://1steptest.vercel.app/server/parent/getParent/$loginUserId",
+          options: Options(
+            headers: {
+              "Content-Type": "application/json",
+              "Cookie": "access_token=$accessToken",
+            },
+          ),
+        );
 
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => ParentDashBoard(userId: Id)),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("You are not a Parent user.")),
-          );
+        print("Parent API Response: ${parentResponse.data}");
+        print("Parent API Status Code: ${parentResponse.statusCode}");
+
+        if (parentResponse.statusCode == 200 && parentResponse.data != null) {
+          var parentData = parentResponse.data;
+
+          // ❌ If "status": false, move to DetailsPage
+          if (parentData.containsKey("status") && parentData["status"] == false) {
+
+
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => DetailsPage(userId: loginUserId)),
+            );
+            return;
+          }
+
+          // ✅ If parentDetails exist, move to ParentDashBoard
+          if (parentData.containsKey("parentDetails")) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text("Login successful! Redirecting to Dashboard...")),
+            );
+
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => ParentDashBoard(userId: loginUserId)),
+            );
+            return;
+          }
         }
+
+        // ❌ If no valid parent details, move to DetailsPage
+
+
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => ParentDashBoard(userId: loginUserId)),
+        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Server error: ${response.statusCode}")),
         );
       }
     } catch (e) {
+      print("Error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("An error occurred. Please check your connection.")),
       );
     }
   }
+
   void Googlesignup() async {
     try {
       // Start Google Sign-In
@@ -184,7 +216,8 @@ class _SignInPageState extends State<SignInPage> {
         var responseData = response.data;
 
         // ✅ Extract cookies
-        List<Cookie> cookies = await cookieJar.loadForRequest(Uri.parse("https://1steptest.vercel.app/server/auth/google"));
+        List<Cookie> cookies = await cookieJar.loadForRequest(
+            Uri.parse("https://1steptest.vercel.app/server/auth/google"));
         String? accessToken;
         String? refreshToken;
 
@@ -212,27 +245,70 @@ class _SignInPageState extends State<SignInPage> {
         if (responseData is Map<String, dynamic>) {
           print("User data stored successfully!");
 
-          // Navigate to Details Page
-          Navigator.push(
+          // ✅ Call Parent API
+          var parentResponse = await dio.get(
+            "https://1steptest.vercel.app/server/parent/getParent/$Id",
+            options: Options(
+              headers: {
+                "Content-Type": "application/json",
+                "Cookie": "access_token=$accessToken",
+              },
+            ),
+          );
+
+          print("Parent API Response: ${parentResponse.data}");
+          print("Parent API Status Code: ${parentResponse.statusCode}");
+
+          if (parentResponse.statusCode == 200 && parentResponse.data != null) {
+            var parentData = parentResponse.data;
+
+            // ❌ If "status": false, move to DetailsPage
+            if (parentData.containsKey("status") &&
+                parentData["status"] == false) {
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => DetailsPage(userId: Id)),
+              );
+              return;
+            }
+
+            // ✅ If parentDetails exist, move to ParentDashBoard
+            if (parentData.containsKey("parentDetails")) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text(
+                    "Login successful! Redirecting to Dashboard...")),
+              );
+
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(
+                    builder: (context) => ParentDashBoard(userId: Id)),
+              );
+              return;
+            }
+          }
+
+          // ❌ If no valid parent details, move to DetailsPage
+
+
+          Navigator.pushReplacement(
             context,
-            MaterialPageRoute(builder: (context) => DetailsPage(userId: Id)),
+            MaterialPageRoute(
+                builder: (context) => ParentDashBoard(userId: Id)),
           );
         } else {
-          print("Unexpected response format: $responseData");
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("Signup failed: Unexpected response format")),
+            SnackBar(content: Text("Server error: ${response.statusCode}")),
           );
         }
-      } else {
-        print("Error: ${response.statusCode} - ${response.data}");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Signup failed: ${response.data}")),
-        );
+
       }
-    } catch (error) {
-      print("Google Sign-In Failed: $error");
+    }
+    catch (e) {
+      print("Error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Google Sign-In Failed: $error")),
+        SnackBar(content: Text("An error occurred. Please check your connection.")),
       );
     }
   }
@@ -324,13 +400,23 @@ class _SignInPageState extends State<SignInPage> {
                 // Password TextField
                 TextField(
                   style: TextStyle(
-                    fontFamily:'afacad',
+                    fontFamily: 'afacad',
                   ),
                   controller: passwordController,
-                  obscureText: true,
+                  obscureText: _isObscure,
                   decoration: InputDecoration(
                     hintText: 'Password',
                     prefixIcon: const Icon(Icons.lock_outline),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _isObscure ? Icons.visibility_off : Icons.visibility,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          _isObscure = !_isObscure;
+                        });
+                      },
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12.0),
                       borderSide: BorderSide.none,

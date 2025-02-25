@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../AppColors.dart';
 import 'HomePage.dart';
 import 'appointments_page.dart';
@@ -9,25 +10,47 @@ class ParentDashBoard extends StatefulWidget {
   final String userId;
 
   ParentDashBoard({required this.userId});
+
   @override
   _ParentDashBoardState createState() => _ParentDashBoardState();
 }
 
 class _ParentDashBoardState extends State<ParentDashBoard> {
   int _currentIndex = 0;
+  String? userId;
+  List<Widget> _pages = [];
 
-  final List<Widget> _pages = [
-    HomePage(),
-    AppointmentsPage(),
-    MessagesPage(),
-    ProfilePage(),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _saveUserId(widget.userId);
+    _loadUserId();
+  }
+
+  /// Save userId in SharedPreferences
+  void _saveUserId(String userId) async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    await prefs.setString('user_id', userId);
+  }
+
+  /// Load userId from SharedPreferences
+  void _loadUserId() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userId = prefs.getString('user_id') ?? 'No ID Found';
+      _pages = [
+        HomePage(),
+        AppointmentsPage(),
+        MessagesPage(),
+        ProfilePage(),
+      ];
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-
-      body: _pages[_currentIndex],
+      body: _pages.isNotEmpty ? _pages[_currentIndex] : Center(child: CircularProgressIndicator()),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,

@@ -105,12 +105,11 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
   Future<void> submitForm() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('Access_token');
-    String? googleToken = prefs.getString('Google_access_token');
+    String? googleToken = prefs.getString('Google_token');
 
     print('Google Token: $googleToken');
 
     try {
-      // Check if an image is selected
       String? imageUrl;
       if (_profileImage != null) {
         imageUrl = await uploadImageToFirebase(_profileImage!);
@@ -123,10 +122,27 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
         }
       }
 
-      // Collect all the data
+      // Convert day abbreviations to full names
+      final Map<String, String> dayMapping = {
+        "Mon": "Monday",
+        "Tue": "Tuesday",
+        "Wed": "Wednesday",
+        "Thu": "Thursday",
+        "Fri": "Friday",
+        "Sat": "Saturday",
+        "Sun": "Sunday"
+      };
+
+      Map<String, List<String>> formattedTimeSlots = {};
+      selectedSlotsPerDay.forEach((key, value) {
+        formattedTimeSlots[dayMapping[key]!] = value;
+      });
+
+      print("Formatted Time Slots: $formattedTimeSlots"); // Debugging
+
       final Map<String, dynamic> requestBody = {
         "userRef": widget.userId,
-        "profilePicture": imageUrl, // Store uploaded image URL
+        "profilePicture": imageUrl,
         "fullName": providerNameController.text,
         "email": providerEmailController.text,
         "qualification": providerQualificationController.text,
@@ -145,29 +161,27 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
           "city": providerCityController.text,
           "pincode": providerPincodeController.text,
         },
-        "timeSlots": selectedSlotsPerDay,
+        "timeSlots": formattedTimeSlots,
       };
 
       print('Sending request to server...');
       print('Request Body: $requestBody');
 
-      // Construct Cookie Header
       String cookieHeader = "";
       if (token != null && token.isNotEmpty) {
         cookieHeader += "access_token=$token;";
       }
       if (googleToken != null && googleToken.isNotEmpty) {
-        cookieHeader += "Google_access_token=$googleToken;";
+        cookieHeader += "google_access_token=$googleToken;";
       }
 
       print('Cookie Token: $cookieHeader');
 
-      // Send the request to the backend
       var response = await http.post(
         Uri.parse("https://1steptest.vercel.app/server/provider/create"),
         headers: {
           "Content-Type": "application/json",
-          if (cookieHeader.isNotEmpty) "Cookie": cookieHeader, // Send both tokens in cookies
+          if (cookieHeader.isNotEmpty) "Cookie": cookieHeader,
         },
         body: jsonEncode(requestBody),
       ).timeout(const Duration(seconds: 30));
@@ -175,7 +189,6 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
       print('Response Status: ${response.statusCode}');
       print('Response Body: ${response.body}');
 
-      // Handle the response
       var jsonResponse = jsonDecode(response.body);
       if (response.statusCode == 201 && jsonResponse['success'] == true) {
         ScaffoldMessenger.of(context).showSnackBar(

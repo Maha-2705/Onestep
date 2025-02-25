@@ -53,7 +53,7 @@ class ProfilePage extends StatelessWidget {
                 SizedBox(height: 10),
                 // Center-Aligned Name & Role
                 Text(
-                  "Roma Johnson",
+                  "Your Name",
                   style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                 ),
