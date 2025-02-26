@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:one_step/AppColors.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../AppColors.dart';
 import 'ProviderProfile.dart';
@@ -274,134 +275,233 @@ class _SearchPageState extends State<SearchPage> {
   }
 
 
+
   Widget _buildServiceCard(Map<String, dynamic> service) {
-    return Card(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      margin: EdgeInsets.symmetric(vertical: 10),
-      elevation: 4,
-      child: Padding(
-        padding: EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  backgroundImage: NetworkImage(service["profilePicture"]),
-                  radius: 30,
-                ),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        service["name"],
-                        style: TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        service["service"],
-                        style: TextStyle(fontSize: 12, color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.favorite_border),
-              ],
-            ),
-            SizedBox(height: 10),
+    ValueNotifier<bool> isFavorite = ValueNotifier<bool>(false); // Track favorite state
 
-            // 📍 Location with icon
-            Row(
-              children: [
-                Icon(
-                    Icons.location_on, color: AppColors.primaryColor, size: 16),
-                SizedBox(width: 5),
-                Expanded(
-                  child: Text(
-                      service["location"], style: TextStyle(fontSize: 12)),
-                ),
-              ],
-            ),
-            SizedBox(height: 5),
+    // Function to fetch favorite status
+    Future<void> fetchFavoriteStatus(String userId, String providerId) async {
+      final url = Uri.parse("https://1stepdev.vercel.app/server/favorite/favoriteStatus/$userId?providerId=$providerId");
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('access_token');
+      String? googleToken = prefs.getString('google_access_token');
 
-            // 🎓 Experience with icon
-            Row(
-              children: [
-                Icon(Icons.school, color: AppColors.primaryColor, size: 16),
-                SizedBox(width: 5),
-                Text(service["experience"], style: TextStyle(fontSize: 12)),
-              ],
-            ),
-            SizedBox(height: 5),
+      try {
+        String cookieHeader = "";
+        if (token != null && token.isNotEmpty) {
+          cookieHeader += "access_token=$token;";
+        }
+        if (googleToken != null && googleToken.isNotEmpty) {
+          cookieHeader += "google_access_token=$googleToken;";
+        }
 
-            // 🖥️ Availability with icon
-            Row(
-              children: [
-                Icon(Icons.video_call, color: AppColors.primaryColor, size: 16),
-                SizedBox(width: 5),
-                Text(service["availability"], style: TextStyle(fontSize: 12)),
-              ],
-            ),
-            SizedBox(height: 5),
+        final response = await http.get(
+          url,
+          headers: {
+            "Content-Type": "application/json",
+            if (cookieHeader.isNotEmpty) "Cookie": cookieHeader,
+          },
+        );
 
-            // ⭐ Reviews with star icons
-            Row(
-              children: [
-                Icon(Icons.star, color: Colors.amber, size: 16),
-                SizedBox(width: 5),
-                Text(
-                  "${service["rating"]}  (${service["reviews"]} reviews)",
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            ),
-            SizedBox(height: 10),
+        print("Fetch Status Response: ${response.body}");
 
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  service["price"],
-                  style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.primaryColor),
-                ),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryColor,
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
-                  ),
-                  onPressed: () {
-                    // Print the _id to the console for debugging
-                    print("Provider ID: ${service["id"]}");
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> responseData = jsonDecode(response.body);
+          isFavorite.value = responseData["isFavorite"] ?? false;
+        } else {
+          print("Failed to fetch favorite status");
+        }
+      } catch (e) {
+        print("Error: $e");
+      }
+    }
 
-                    // Pass the _id when navigating to the profile screen
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => DoctorProfilePage(
-                          providerId: service["id"], // Pass the _id
+    // Function to toggle favorite status
+    Future<void> toggleFavorite(String userId, String providerId) async {
+      final url = Uri.parse("https://1stepdev.vercel.app/server/favorite/favorites/$userId");
+
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? token = prefs.getString('access_token');
+      String? googleToken = prefs.getString('google_access_token');
+
+
+      try {
+        String cookieHeader = "";
+        if (token != null && token.isNotEmpty) {
+          cookieHeader += "access_token=$token;";
+        }
+        if (googleToken != null && googleToken.isNotEmpty) {
+          cookieHeader += "google_access_token=$googleToken;";
+        }
+
+
+        final response = await http.post(
+          url,
+          body: jsonEncode({"providerId": providerId}),
+          headers: {
+            "Content-Type": "application/json",
+            if (cookieHeader.isNotEmpty) "Cookie": cookieHeader,
+
+          },
+        );
+
+        print("Toggle Favorite Response: ${response.body}");
+
+        if (response.statusCode == 200) {
+          isFavorite.value = !isFavorite.value; // Toggle favorite state
+        } else {
+          print("Failed to update favorite");
+        }
+      } catch (e) {
+        print("Error: $e");
+      }
+    }
+
+    return FutureBuilder(
+      future: SharedPreferences.getInstance(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.done && snapshot.hasData) {
+          SharedPreferences prefs = snapshot.data as SharedPreferences;
+          String? userId = prefs.getString("user_id");
+
+          if (userId != null) {
+            fetchFavoriteStatus(userId, service["id"]);
+          }
+        }
+
+        return ValueListenableBuilder<bool>(
+          valueListenable: isFavorite,
+          builder: (context, fav, _) {
+            return Card(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+              margin: EdgeInsets.symmetric(vertical: 10),
+              elevation: 4,
+              child: Padding(
+                padding: EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundImage: NetworkImage(service["profilePicture"]),
+                          radius: 30,
                         ),
-                      ),
-                    );
-                  },
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                service["name"],
+                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                              ),
+                              Text(
+                                service["service"],
+                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                        GestureDetector(
+                          onTap: () async {
+                            SharedPreferences prefs = await SharedPreferences.getInstance();
+                            String? userId = prefs.getString("user_id");
 
-                  child: Text(
-                    "View Profile",
-                    style: TextStyle(color: Colors.white),
-                  ),
+                            if (userId != null) {
+                              toggleFavorite(userId, service["id"]);
+                            }
+                          },
+                          child: Icon(
+                            fav ? Icons.favorite : Icons.favorite_border,
+                            color: fav ? Colors.red : Colors.grey,
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 10),
+
+                    // 📍 Location
+                    Row(
+                      children: [
+                        Icon(Icons.location_on, color: AppColors.primaryColor, size: 16),
+                        SizedBox(width: 5),
+                        Expanded(child: Text(service["location"], style: TextStyle(fontSize: 12))),
+                      ],
+                    ),
+                    SizedBox(height: 5),
+
+                    // 🎓 Experience
+                    Row(
+                      children: [
+                        Icon(Icons.school, color: AppColors.primaryColor, size: 16),
+                        SizedBox(width: 5),
+                        Text(service["experience"], style: TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                    SizedBox(height: 5),
+
+                    // 🖥️ Availability
+                    Row(
+                      children: [
+                        Icon(Icons.video_call, color: AppColors.primaryColor, size: 16),
+                        SizedBox(width: 5),
+                        Text(service["availability"], style: TextStyle(fontSize: 12)),
+                      ],
+                    ),
+                    SizedBox(height: 5),
+
+                    // ⭐ Reviews
+                    Row(
+                      children: [
+                        Icon(Icons.star, color: Colors.amber, size: 16),
+                        SizedBox(width: 5),
+                        Text(
+                          "${service["rating"]}  (${service["reviews"]} reviews)",
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: 10),
+
+                    // Price & View Profile Button
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          service["price"],
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.primaryColor),
+                        ),
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primaryColor,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DoctorProfilePage(
+                                  providerId: service["id"],
+                                ),
+                              ),
+                            );
+                          },
+                          child: Text("View Profile", style: TextStyle(color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
-              ],
-            ),
-          ],
-        ),
-      ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
+
+
   OverlayEntry? _overlayEntry;
 
   String? _selectedService; // Add this at the top of your class

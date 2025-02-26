@@ -27,14 +27,13 @@ class _AppointmentsPageState extends State<AppointmentsPage> with SingleTickerPr
 
   List<Map<String, String>> canceledAppointments = [
   ];
-
+  List<Map<String, String>> allAppointments = [];
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
     fetchAppointments();
   }
-
   void fetchAppointments() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('access_token');
@@ -51,8 +50,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> with SingleTickerPr
       }
 
       var response = await http.get(
-        Uri.parse(
-            "https://1steptest.vercel.app/server/booking/getuserbookings/$Id"),
+        Uri.parse("https://1steptest.vercel.app/server/booking/getuserbookings/$Id"),
         headers: {
           "Content-Type": "application/json",
           if (cookieHeader.isNotEmpty) "Cookie": cookieHeader,
@@ -64,65 +62,83 @@ class _AppointmentsPageState extends State<AppointmentsPage> with SingleTickerPr
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         var jsonResponse = jsonDecode(response.body);
-
-        // Clear previous lists
-        setState(() {
-          upcomingAppointments.clear();
-          completedAppointments.clear();
-          canceledAppointments.clear();
-        });
-
         List<dynamic> userBookings = jsonResponse["userBookings"];
 
+        setState(() {
+          allAppointments.clear();
+        });
+
         for (var booking in userBookings) {
-          String status = booking["status"] ??
-              "pending"; // Default to 'pending'
-          String doctor = booking["providerDetails"]["fullName"] ??
-              "Unknown Doctor";
+          String status = booking["status"] ?? "pending";
+          String doctor = booking["providerDetails"]["fullName"] ?? "Unknown Doctor";
           List<dynamic> serviceList = booking["service"] ?? [];
-          String specialty = serviceList.isNotEmpty
-              ? serviceList.join(", ")
-              : "General";
+          String specialty = serviceList.isNotEmpty ? serviceList.join(", ") : "General";
 
-          String date = formatDate(booking["scheduledTime"]["date"]);
+          // Convert API date to yyyy-MM-dd format
+          String apiDate = booking["scheduledTime"]["date"] ?? "";
+          DateTime parsedDate = DateTime.parse(apiDate);
+          String formattedDate = DateFormat('yyyy-MM-dd').format(parsedDate);
+
           String time = booking["scheduledTime"]["slot"] ?? "N/A";
-
-          String location = booking["providerDetails"]["address"]["city"] ??
-              "Unknown Location";
-
-          // Retrieve profile picture
-          String profilePicture = booking["providerDetails"]["profilePicture"] ??
-              "";
-
-          // Retrieve provider ID
+          String location = booking["providerDetails"]["address"]["city"] ?? "Unknown Location";
+          String profilePicture = booking["providerDetails"]["profilePicture"] ?? "";
           String providerId = booking["providerDetails"]["_id"] ?? "Unknown ID";
 
           Map<String, String> appointment = {
             "doctor": doctor,
             "specialty": specialty,
-            "date": date,
+            "date": formattedDate,  // ✅ Store in yyyy-MM-dd format
             "time": time,
             "location": location,
             "profilePicture": profilePicture,
-            "providerId": providerId, // Added provider ID
+            "providerId": providerId,
+            "status": status,
           };
 
           setState(() {
-            if (status == "pending") {
-              upcomingAppointments.add(appointment);
-            } else if (status == "completed") {
-              completedAppointments.add(appointment);
-            } else if (status == "rejected") {
-              canceledAppointments.add(appointment);
-            }
+            allAppointments.add(appointment);
           });
         }
+
+        print("All Appointments: $allAppointments"); // Debugging
+
+        filterAppointmentsByDate(_selectedDate);
       } else {
         print("❌ Failed to fetch appointments: ${response.body}");
       }
     } catch (e) {
       print("❌ Error fetching appointments: $e");
     }
+  }
+
+// Function to filter appointments based on the selected date
+  void filterAppointmentsByDate(DateTime selectedDate) {
+    String formattedSelectedDate = DateFormat('yyyy-MM-dd').format(selectedDate);
+    print("Selected Date: $formattedSelectedDate");
+
+    setState(() {
+      // Clear lists before filtering
+      upcomingAppointments.clear();
+      completedAppointments.clear();
+      canceledAppointments.clear();
+
+      for (var appointment in allAppointments) {
+        if (appointment["date"] == formattedSelectedDate) {
+          if (appointment["status"] == "pending") {
+            upcomingAppointments.add(appointment);
+          } else if (appointment["status"] == "completed") {
+            completedAppointments.add(appointment);
+          } else if (appointment["status"] == "rejected") {
+            canceledAppointments.add(appointment);
+          }
+        }
+      }
+    });
+
+    // Debugging
+    print("Upcoming: ${upcomingAppointments.length}");
+    print("Completed: ${completedAppointments.length}");
+    print("Canceled: ${canceledAppointments.length}");
   }
 
 // Function to format the date with year
@@ -165,8 +181,6 @@ class _AppointmentsPageState extends State<AppointmentsPage> with SingleTickerPr
       ),
     );
   }
-
-  /// Calendar View
   Widget _buildCalendarView() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -181,13 +195,22 @@ class _AppointmentsPageState extends State<AppointmentsPage> with SingleTickerPr
             _selectedDate = selectedDay;
             _focusedDate = focusedDay;
           });
+          filterAppointmentsByDate(selectedDay); // Update appointments based on selected date
         },
         headerStyle: HeaderStyle(
           formatButtonVisible: false,
           titleCentered: true,
-          titleTextStyle: TextStyle(fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: AppColors.primaryColor),
+          titleTextStyle: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: AppColors.primaryColor,
+          ),
+        ),
+        daysOfWeekStyle: DaysOfWeekStyle(
+          weekendStyle: TextStyle(
+            color: Colors.red, // Saturday and Sunday text in red
+            fontWeight: FontWeight.bold,
+          ),
         ),
         calendarStyle: CalendarStyle(
           selectedDecoration: BoxDecoration(
@@ -195,8 +218,12 @@ class _AppointmentsPageState extends State<AppointmentsPage> with SingleTickerPr
             shape: BoxShape.circle,
           ),
           todayDecoration: BoxDecoration(
-            color: Colors.grey[200],
+            color: Colors.grey[200], // Grey background for today
             shape: BoxShape.circle,
+          ),
+          todayTextStyle: TextStyle(
+            color: Colors.black, // Black text color for today
+            fontWeight: FontWeight.bold,
           ),
           outsideDaysVisible: false,
         ),
@@ -204,7 +231,7 @@ class _AppointmentsPageState extends State<AppointmentsPage> with SingleTickerPr
     );
   }
 
-  /// Tabs for Filtering Appointments
+
   Widget _buildTabBar() {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
@@ -212,20 +239,41 @@ class _AppointmentsPageState extends State<AppointmentsPage> with SingleTickerPr
         controller: _tabController,
         labelColor: Colors.white,
         unselectedLabelColor: Colors.black,
-        indicatorSize: TabBarIndicatorSize.tab,
-        // Full width indicator
+        indicatorSize: TabBarIndicatorSize.tab, // Full width indicator
         indicator: BoxDecoration(
           color: AppColors.primaryColor,
           borderRadius: BorderRadius.circular(10),
         ),
         tabs: [
-          Tab(text: "Upcoming"),
-          Tab(text: "Completed"),
-          Tab(text: "Canceled"),
+          Container(
+            height: 35, // Increase the height as needed
+            alignment: Alignment.center,
+            child: Text(
+              "Upcoming",
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+            ),
+          ),
+          Container(
+            height: 35,
+            alignment: Alignment.center,
+            child: Text(
+              "Completed",
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+            ),
+          ),
+          Container(
+            height: 35,
+            alignment: Alignment.center,
+            child: Text(
+              "Canceled",
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+            ),
+          ),
         ],
       ),
     );
   }
+
 
   Widget _buildAppointmentList(List<Map<String, String>> appointments, String status) {
     return FutureBuilder(

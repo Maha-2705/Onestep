@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:one_step/AppColors.dart';
 import 'package:one_step/ParentScreens/EditParent.dart';
 
+import 'FavouriteList.dart';
+
 class ProfilePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -71,7 +73,7 @@ class ProfilePage extends StatelessWidget {
                     _buildDivider(),
                     _buildProfileOption(Icons.notifications, "Notifications", context, null),
                     _buildDivider(),
-                    _buildProfileOption(Icons.favorite, "Favourites", context, null),
+                    _buildProfileOption(Icons.favorite, "Favourites", context, FavouriteListScreen()),
                     _buildDivider(),
                     _buildProfileOption(Icons.lock, "Change Password", context, null),
                     _buildDivider(),

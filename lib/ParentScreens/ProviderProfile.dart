@@ -23,13 +23,50 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
   int totalRatings = 0; // Store review count
   bool isLoading = true; // Loading state
 
+  bool isFavorite = false;
+  String userId = "";
 
   @override
   void initState() {
     super.initState();
     fetchProviderDetails();
     fetchratings();
+    _loadUserIdAndFetchFavorite();
+
   }
+
+  Future<void> _loadUserIdAndFetchFavorite() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? storedUserId = prefs.getString("user_id");
+
+    if (storedUserId != null) {
+      setState(() {
+        userId = storedUserId;
+      });
+
+      bool favoriteStatus = await FavoriteService.fetchFavoriteStatus(userId, widget.providerId);
+      setState(() {
+        isFavorite = favoriteStatus;
+      });
+    }
+  }
+
+  void _toggleFavorite() async {
+    print("Before toggle: isFavorite = $isFavorite");
+
+    if (userId.isNotEmpty) {
+      await FavoriteService.toggleFavorite(userId, widget.providerId, (newStatus) {
+        print("API Response - newStatus: $newStatus");
+
+        setState(() {
+          isFavorite = newStatus;
+          print("✅ Final UI Updated - isFavorite: $isFavorite");
+        });
+      });
+    }
+  }
+
+
   Future<void> fetchratings() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('access_token');
@@ -117,6 +154,7 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
       }
     }
   }
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -127,7 +165,10 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
         elevation: 0,
         iconTheme: IconThemeData(color: Colors.black),
         actions: [
-          IconButton(icon: Icon(Icons.favorite_border), onPressed: () {}),
+      IconButton(
+      icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.red : Colors.grey),
+      onPressed: _toggleFavorite,
+    ),
           IconButton(icon: Icon(Icons.message), onPressed: () {}),
         ],
       ),
@@ -354,3 +395,95 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
     );
   }
 }
+
+
+class FavoriteService {
+  static Future<bool> fetchFavoriteStatus(String userId,
+      String providerId) async {
+    final url = Uri.parse(
+        "https://1stepdev.vercel.app/server/favorite/favoriteStatus/$userId?providerId=$providerId");
+
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('access_token');
+    String? googleToken = prefs.getString('google_access_token');
+
+    try {
+      String cookieHeader = "";
+      if (token != null && token.isNotEmpty) {
+        cookieHeader += "access_token=$token;";
+      }
+      if (googleToken != null && googleToken.isNotEmpty) {
+        cookieHeader += "google_access_token=$googleToken;";
+      }
+
+      final response = await http.get(
+        url,
+        headers: {
+          "Content-Type": "application/json",
+          if (cookieHeader.isNotEmpty) "Cookie": cookieHeader,
+        },
+      );
+
+      print("Fetch Status Response: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
+        return responseData["isFavorite"] ?? false;
+      } else {
+        print("Failed to fetch favorite status");
+        return false;
+      }
+    } catch (e) {
+      print("Error: $e");
+      return false;
+    }
+  }
+
+  static Future<void> toggleFavorite(String userId, String providerId,
+      Function(bool) onFavoriteChanged) async {
+    final url = Uri.parse(
+        "https://1stepdev.vercel.app/server/favorite/favorites/$userId");
+
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('access_token');
+    String? googleToken = prefs.getString('google_access_token');
+
+
+    try {
+      String cookieHeader = "";
+      if (token != null && token.isNotEmpty) {
+        cookieHeader += "access_token=$token;";
+      }
+      if (googleToken != null && googleToken.isNotEmpty) {
+        cookieHeader += "google_access_token=$googleToken;";
+      }
+
+
+      final response = await http.post(
+        url,
+        body: jsonEncode({"providerId": providerId}),
+        headers: {
+          "Content-Type": "application/json",
+          if (cookieHeader.isNotEmpty) "Cookie": cookieHeader,
+
+        },
+      );
+
+      print("Toggle Favorite Response: ${response.body}");
+
+      if (response.statusCode == 200) {
+        final jsonResponse = jsonDecode(response.body);
+        bool newFavoriteStatus = jsonResponse["isFavorite"]; // ✅ Ensure correct API response is used
+
+        print("Passing to callback: $newFavoriteStatus");
+        onFavoriteChanged(newFavoriteStatus); // ✅ Pass correct value
+      } else {
+        print("Failed to update favorite");
+      }
+    } catch (e) {
+      print("Error: $e");
+    }
+  }
+}
+
