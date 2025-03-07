@@ -1,51 +1,147 @@
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
+
 import 'package:flutter/material.dart';
 import 'package:one_step/AppColors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../ParentScreens/messages_page.dart';
 
-class ChatListPage extends StatelessWidget {
-  final List<Map<String, dynamic>> users = [
-    {
-      "id": "1",
-      "name": "Leader-nim",
-      "lastMessage": "Time is running!",
-      "time": "1m",
-      "unreadCount": 2,
-      "image": "Assets/Images/profile.jpg"
-    },
-    {
-      "id": "2",
-      "name": "Se Hun Oh",
-      "lastMessage": "Just stop. I'm already late!",
-      "time": "3m",
-      "unreadCount": 0,
-      "image": "Assets/Images/profile.jpg"
-    },
-    {
-      "id": "3",
-      "name": "Jong Dae Hyung",
-      "lastMessage": "Typing...",
-      "time": "12m",
-      "unreadCount": 1,
-      "image": "Assets/Images/profile.jpg"
-    },
-    {
-      "id": "4",
-      "name": "Yixing Gege",
-      "lastMessage": "🎙 Voice Message",
-      "time": "15m",
-      "unreadCount": 1,
-      "image": "Assets/Images/profile.jpg"
-    },
-    {
-      "id": "5",
-      "name": "Yeollie Hyung",
-      "lastMessage": "I'll send the rest later",
-      "time": "30m",
-      "unreadCount": 0,
-      "image": "Assets/Images/profile.jpg"
-    },
-  ]; // Example users
+class ChatListPage extends StatefulWidget {
+  @override
+  _ChatListPageState createState() => _ChatListPageState();
+}
+
+class _ChatListPageState extends State<ChatListPage> {
+  List<Map<String, dynamic>> messages = [];
+
+  @override
+  void initState() {
+    super.initState();
+    loadOldMessages();
+  }
+
+
+  Future<void> loadOldMessages() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('access_token');
+    String? userId = prefs.getString('user_id');
+    String? googleToken = prefs.getString('google_access_token');
+
+    if (userId == null) {
+      print("User ID not found in SharedPreferences");
+      return;
+    }
+
+    final url = "https://1steptest.vercel.app/server/message/getprovider/$userId";
+
+    Map<String, String> headers = {
+      "Content-Type": "application/json",
+    };
+
+    String cookieHeader = "";
+    if (token != null && token.isNotEmpty) {
+      cookieHeader += "access_token=$token;";
+    }
+    if (googleToken != null && googleToken.isNotEmpty) {
+      cookieHeader += "google_access_token=$googleToken;";
+    }
+
+    if (cookieHeader.isNotEmpty) {
+      headers["Cookie"] = cookieHeader;
+    }
+
+    try {
+      final res = await http.get(Uri.parse(url), headers: headers);
+
+      print("Provider API Response Status: ${res.statusCode}");
+      print("Provider API Response Body: ${res.body}");
+
+      if (res.statusCode == 200) {
+        final List<dynamic> providers = jsonDecode(res.body);
+        List<Map<String, dynamic>> updatedMessages = [];
+
+        for (var provider in providers) {
+          String providerId = provider["_id"];
+          String fullName = provider["fullName"] ?? "Unknown";
+          String profilePicture = provider["profilePicture"] ?? "";
+          String roomID = "${userId}_$providerId";
+
+          // Fetch last message
+          final lastMessageRes = await http.get(
+            Uri.parse("https://1steptest.vercel.app/server/message/getlastmessage/$roomID"),
+            headers: headers,
+          );
+
+          print("Last Message API Response for $roomID - Status: ${lastMessageRes.statusCode}");
+          print("Last Message API Response Body: ${lastMessageRes.body}");
+
+          String lastMessage = "No message yet";
+          String formattedTime = "";
+
+          if (lastMessageRes.statusCode == 200) {
+            final lastMessageData = jsonDecode(lastMessageRes.body);
+            lastMessage = lastMessageData["message"] ?? "No message yet";
+
+            // Extract and format the time
+            String createdAt = lastMessageData["createdAt"] ?? "";
+            formattedTime = _formatTime(createdAt);
+          }
+
+          // Fetch unread messages count
+          final unreadCountRes = await http.get(
+            Uri.parse("https://1steptest.vercel.app/server/message/getunreadmessagescount/$roomID?reciever=$userId"),
+            headers: headers,
+          );
+
+          print("Unread Messages API Response for $roomID - Status: ${unreadCountRes.statusCode}");
+          print("Unread Messages API Response Body: ${unreadCountRes.body}");
+
+          int unreadCount = 0;
+          try {
+            final unreadData = jsonDecode(unreadCountRes.body);
+            if (unreadData is Map && unreadData.containsKey("unreadCount")) {
+              unreadCount = unreadData["unreadCount"] is int
+                  ? unreadData["unreadCount"]
+                  : int.tryParse(unreadData["unreadCount"].toString()) ?? 0;
+            } else {
+              print("⚠️ Unexpected response format for unread messages.");
+            }
+          } catch (e) {
+            print("Error parsing unread messages: $e");
+          }
+
+          // **Add provider details to the list**
+          updatedMessages.add({
+            "id": providerId,
+            "fullName": fullName,
+            "profilePicture": profilePicture,
+            "lastMessage": lastMessage,
+            "unreadCount": unreadCount,
+            "time": formattedTime,  // Store formatted time
+          });
+        }
+
+        // **Update the state with the new message list**
+        setState(() {
+          messages = updatedMessages;
+        });
+      }
+    } catch (e) {
+      print(" Error fetching messages: $e");
+    }
+  }
+  String _formatTime(String timestamp) {
+    if (timestamp.isEmpty) return "";
+    try {
+      DateTime parsedTime = DateTime.parse(timestamp).toLocal(); // Convert to local time
+      return DateFormat('hh:mm a').format(parsedTime); // Example: "10:39 AM"
+    } catch (e) {
+      print(" Error formatting time: $e");
+      return "";
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -77,44 +173,37 @@ class ChatListPage extends StatelessWidget {
 
           // Chat List
           Expanded(
-            child: ListView.builder(
-              itemCount: users.length,
+            child: messages.isEmpty
+                ? Center(child: CircularProgressIndicator()) // Loading Indicator
+                : ListView.builder(
+              itemCount: messages.length,
+
               itemBuilder: (context, index) {
-                final user = users[index];
+                final user = messages[index];
 
                 return ListTile(
                   leading: CircleAvatar(
                     radius: 25,
-                    backgroundImage: AssetImage(user["image"]),
+                    backgroundImage: user["profilePicture"].isNotEmpty
+                        ? NetworkImage(user["profilePicture"])
+                        : AssetImage("assets/default_profile.png") as ImageProvider,
                   ),
-                  title: Text(user["name"],
-                      style: TextStyle(fontWeight: FontWeight.bold)),
-                  subtitle: Text(user["lastMessage"],
-                      style: TextStyle(
-                          color: user["lastMessage"] == "Typing..."
-                              ? Colors.blue
-                              : Colors.grey[700])),
+                  title: Text(user["fullName"], style: TextStyle(fontWeight: FontWeight.bold)),
+                  subtitle: Text(user["lastMessage"], maxLines: 1, overflow: TextOverflow.ellipsis),
                   trailing: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(user["time"], style: TextStyle(color: Colors.grey)),
+                      Text(user["time"], style: TextStyle(fontSize: 12, color: Colors.grey)), // Show time
                       if (user["unreadCount"] > 0)
-                        Container(
-                          margin: EdgeInsets.only(top: 5),
-                          padding: EdgeInsets.all(6),
-                          decoration: BoxDecoration(
-                            color: Colors.red,
-                            shape: BoxShape.circle,
-                          ),
-                          child: Text(
-                            user["unreadCount"].toString(),
-                            style: TextStyle(color: Colors.white, fontSize: 12),
-                          ),
+                        CircleAvatar(
+                          radius: 12,
+                          backgroundColor: Colors.red,
+                          child: Text(user["unreadCount"].toString(), style: TextStyle(color: Colors.white)),
                         ),
                     ],
                   ),
                   onTap: () async {
-                    // Fetch the user_id from SharedPreferences before navigating
                     final prefs = await SharedPreferences.getInstance();
                     final currentUserId = prefs.getString("user_id") ?? "";
 
@@ -130,7 +219,6 @@ class ChatListPage extends StatelessWidget {
                       );
                     } else {
                       print("User ID not found in SharedPreferences");
-                      // You can show an alert here if needed
                     }
                   },
                 );
@@ -142,7 +230,9 @@ class ChatListPage extends StatelessWidget {
 
       // Floating Button for New Chat
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () {
+          print("New Chat");
+        },
         backgroundColor: AppColors.primaryColor,
         child: Icon(Icons.add, color: Colors.white),
       ),

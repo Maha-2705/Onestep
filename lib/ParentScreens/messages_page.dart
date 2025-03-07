@@ -5,7 +5,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
 import '../AppColors.dart';
 import '../Socket/SocketService.dart';
 
@@ -38,7 +37,6 @@ class _ChatScreenState extends State<MessagesPage> {
       });
     });
 
-    loadOldMessages();
   }
 
   void sendMessage() {
@@ -62,60 +60,7 @@ class _ChatScreenState extends State<MessagesPage> {
     _messageController.clear();
   }
 
-  Future<void> loadOldMessages() async {
-    if (widget.currentUserId == null || widget.currentUserId!.isEmpty) {
-      print("Error: currentUserId is null or empty!");
-      return; // Stop execution if currentUserId is null
-    }
-    final url = "https://1steptest.vercel.app/server/message/getprovider/${widget.currentUserId}";
-    SharedPreferences prefs = await SharedPreferences.getInstance();
 
-    String? token = prefs.getString('access_token');
-    String? Id = prefs.getString('user_id');
-    String? googleToken = prefs.getString('google_access_token');
-
-    String cookieHeader = "";
-      if (token != null && token.isNotEmpty) {
-        cookieHeader += "access_token=$token;";
-      }
-      if (googleToken != null && googleToken.isNotEmpty) {
-        cookieHeader += "google_access_token=$googleToken;";
-      }
-      try{
-        print("Making GET request to: $url");
-
-        final res = await http.get(
-      Uri.parse(url),
-      headers: {
-        "Content-Type": "application/json",
-        if (cookieHeader.isNotEmpty) "Cookie": cookieHeader,
-
-        // Add authentication header if required
-        // "Authorization": "Bearer YOUR_ACCESS_TOKEN"
-      },
-    );
-
-      print("Response Status Code: ${res.statusCode}");
-      print("Raw Response Body: ${res.body}");
-
-      if (res.statusCode == 200) {
-        final List<dynamic> oldMessages = jsonDecode(res.body);
-
-        setState(() {
-          messages.insertAll(0, oldMessages.map((msg) => {
-            "sender": msg["sender"],
-            "message": msg["message"],
-            "createdAt": DateTime.tryParse(msg["createdAt"]) ?? DateTime.now(),
-          }).toList());
-        });
-      } else {
-        print("Failed to load messages: ${res.statusCode}");
-        print("Response Body: ${res.body}"); // Print response for debugging
-      }
-    } catch (e) {
-      print("Error fetching messages: $e");
-    }
-  }
 
 
   @override
