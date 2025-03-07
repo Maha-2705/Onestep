@@ -308,7 +308,7 @@ class _SignInPageState extends State<SignInPage> {
     catch (e) {
       print("Error: $e");
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("An error occurred. Please check your connection.")),
+        SnackBar(content: Text("Incorrect Username and Password")),
       );
     }
   }

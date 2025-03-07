@@ -111,7 +111,7 @@ class _SignInPageState extends State<ProviderSignInPage> {
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("An error occurred. Please check your connection.")),
+        SnackBar(content: Text("Incorrect Username and Password")),
       );
     }
   }

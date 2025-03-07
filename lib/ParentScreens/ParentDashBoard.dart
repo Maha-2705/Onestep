@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../AppColors.dart';
+import '../Socket/SocketService.dart';
+import 'ChatListPage.dart';
 import 'HomePage.dart';
 import 'appointments_page.dart';
 import 'messages_page.dart';
@@ -18,6 +21,7 @@ class ParentDashBoard extends StatefulWidget {
 class _ParentDashBoardState extends State<ParentDashBoard> {
   int _currentIndex = 0;
   String? userId;
+  SocketService? socketService;
   List<Widget> _pages = [];
 
   @override
@@ -33,24 +37,36 @@ class _ParentDashBoardState extends State<ParentDashBoard> {
     await prefs.setString('user_id', userId);
   }
 
-  /// Load userId from SharedPreferences
+  /// Load userId from SharedPreferences and initialize pages
   void _loadUserId() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     setState(() {
       userId = prefs.getString('user_id') ?? 'No ID Found';
+      if (userId != 'No ID Found') {
+        socketService = Provider.of<SocketService>(context, listen: false);
+        socketService?.connect(userId!);
+      }
       _pages = [
         HomePage(),
         AppointmentsPage(),
-        MessagesPage(),
+        ChatListPage(),
         ProfilePage(),
       ];
     });
   }
 
   @override
+  void dispose() {
+    socketService?.disconnect();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: _pages.isNotEmpty ? _pages[_currentIndex] : Center(child: CircularProgressIndicator()),
+      body: _pages.isNotEmpty
+          ? _pages[_currentIndex]
+          : Center(child: CircularProgressIndicator()),
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: Colors.white,
