@@ -52,7 +52,7 @@ class _ChatScreenState extends State<MessagesPage> {
               "createdAt": data["createdAt"],
             });
 
-            // ✅ Sort messages by time (to avoid time clashes)
+            //  Sort messages by time (to avoid time clashes)
             messages.sort((a, b) =>
                 DateTime.parse(a["createdAt"]).compareTo(DateTime.parse(b["createdAt"])));
           });
@@ -84,8 +84,7 @@ class _ChatScreenState extends State<MessagesPage> {
     });
 
     String roomID = "${widget.currentUserId}_${widget.providerId}";
-    String url =
-        "https://1steptest.vercel.app/server/message/getmessage/$roomID";
+    String url = "https://1steptest.vercel.app/server/message/getmessage/$roomID";
 
     try {
       final response = await http.get(Uri.parse(url), headers: headers);
@@ -93,17 +92,24 @@ class _ChatScreenState extends State<MessagesPage> {
       if (response.statusCode == 200) {
         List<dynamic> data = json.decode(response.body);
 
-        // Sort messages by time ascending
+        // Convert the messages to List<Map>
         List<Map<String, dynamic>> sortedMessages =
         List<Map<String, dynamic>>.from(data);
+
+        // Sort messages by time (ascending)
         sortedMessages.sort((a, b) =>
             DateTime.parse(a["createdAt"]).compareTo(DateTime.parse(b["createdAt"])));
+
+        // Convert the time to Local Time
+        for (var message in sortedMessages) {
+          message["createdAt"] = convertToLocalTime(message["createdAt"]);
+        }
 
         setState(() {
           messages = sortedMessages;
         });
 
-        // Mark unread messages as read
+        //  Mark unread messages as read
         List<Map<String, dynamic>> unreadMessages = messages.where((msg) =>
         msg["read"] == false && msg["sender"] != widget.currentUserId).toList();
 
@@ -121,6 +127,18 @@ class _ChatScreenState extends State<MessagesPage> {
       isLoading = false;
     });
   }
+
+  /// Function to Convert UTC Time to Local Time
+  String convertToLocalTime(String utcTime) {
+    try {
+      DateTime dateTime = DateTime.parse(utcTime).toLocal();
+      return DateFormat.jm().format(dateTime); // Returns: 10:30 AM or 04:45 PM
+    } catch (e) {
+      print("Error parsing time: $e");
+      return "";
+    }
+  }
+
 
   Future<void> markMessageAsRead(String messageId) async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -194,134 +212,158 @@ class _ChatScreenState extends State<MessagesPage> {
 
 
 
-  String formatTime(String time) {
-    DateTime dateTime = DateTime.parse(time);
-    return DateFormat.jm().format(dateTime);
-  }
-
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppColors.primaryColor,
-        leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Row(
-          children: [
-            CircleAvatar(
-              backgroundImage: widget.profilePicture.isNotEmpty
-                  ? NetworkImage(widget.profilePicture)
-                  : AssetImage("assets/default_profile.png") as ImageProvider,
-            ),
-            SizedBox(width: 10),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(widget.fullName,
-                    style: TextStyle(
-                        fontWeight: FontWeight.bold, color: Colors.white70)),
-                Text("Online",
-                    style: TextStyle(fontSize: 12, color: Colors.grey)),
-              ],
-            ),
+    return WillPopScope(
+      onWillPop: () async {
+        //  When user presses back, it will auto-refresh
+        fetchMessages();
+        return true;
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          backgroundColor: AppColors.primaryColor,
+          leading: IconButton(
+            icon: Icon(Icons.arrow_back, color: Colors.white),
+            onPressed: () {
+              Navigator.pop(context);
+              fetchMessages(); //  Auto-refresh after back press
+            },
+          ),
+          title: Row(
+            children: [
+              CircleAvatar(
+                backgroundImage: widget.profilePicture.isNotEmpty
+                    ? NetworkImage(widget.profilePicture)
+                    : AssetImage("assets/default_profile.png") as ImageProvider,
+              ),
+              SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(widget.fullName,
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, color: Colors.white70)),
+                  Text("Online",
+                      style: TextStyle(fontSize: 12, color: Colors.grey)),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            Icon(Icons.call, color: Colors.white),
+            SizedBox(width: 30),
           ],
         ),
-        actions: [
-          Icon(Icons.call, color: Colors.white),
-          SizedBox(width: 30),
-        ],
-      ),
-      body: Column(
-        children: [
-          Expanded(
-            child: ListView.builder(
-              reverse: false,
-              itemCount: messages.length,
-              itemBuilder: (context, index) {
-                final message = messages[index];
-                bool isMe = message["sender"] == widget.currentUserId;
-                String time = formatTime(message["createdAt"]);
+        body: RefreshIndicator(
+          onRefresh: () async {
+            //  Pull-to-Refresh to fetch latest messages
+            await fetchMessages();
+          },
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView.builder(
+                  reverse: false,
+                  itemCount: messages.length,
+                  itemBuilder: (context, index) {
+                    final message = messages[index];
+                    bool isMe = message["sender"] == widget.currentUserId;
+                    String time = (message["createdAt"]);
 
-                return Align(
-                  alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                  child: Container(
-                    margin: EdgeInsets.symmetric(vertical: 5, horizontal: 10),
-                    padding: EdgeInsets.symmetric(vertical: 8, horizontal: 14),
-                    decoration: BoxDecoration(
-                      color: isMe ? AppColors.primaryColor : Colors.grey[300],
-                      borderRadius: BorderRadius.only(
-                        topLeft: Radius.circular(15),
-                        topRight: Radius.circular(15),
-                        bottomLeft: isMe ? Radius.circular(15) : Radius.circular(0),
-                        bottomRight: isMe ? Radius.circular(0) : Radius.circular(15),
-                      ),
-                    ),
-                    child: Column(
-                      crossAxisAlignment:
-                      isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          message["message"]!,
-                          style: TextStyle(
-                              color: isMe ? Colors.white : Colors.black,
-                              fontSize: 16),
-                        ),
-                        SizedBox(height: 3),
-                        Text(
-                          time,
-                          style: TextStyle(
-                            color: isMe ? Colors.white70 : Colors.black54,
-                            fontSize: 12,
+                    return Align(
+                      alignment: isMe
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
+                      child: Container(
+                        margin: EdgeInsets.symmetric(
+                            vertical: 5, horizontal: 10),
+                        padding: EdgeInsets.symmetric(
+                            vertical: 8, horizontal: 14),
+                        decoration: BoxDecoration(
+                          color: isMe
+                              ? AppColors.primaryColor
+                              : Colors.grey[300],
+                          borderRadius: BorderRadius.only(
+                            topLeft: Radius.circular(15),
+                            topRight: Radius.circular(15),
+                            bottomLeft: isMe
+                                ? Radius.circular(15)
+                                : Radius.circular(0),
+                            bottomRight: isMe
+                                ? Radius.circular(0)
+                                : Radius.circular(15),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-
-
-          Padding(
-            padding: EdgeInsets.all(10),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200], // Background color
-                      borderRadius: BorderRadius.circular(30), // Fully rounded corners
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 20),
-                      child: TextField(
-                        controller: _messageController,
-                        decoration: InputDecoration(
-                          hintText: "Type a message...",
-                          border: InputBorder.none, // Removes the underline
-                          hintStyle: TextStyle(color: Colors.grey),
+                        child: Column(
+                          crossAxisAlignment: isMe
+                              ? CrossAxisAlignment.end
+                              : CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              message["message"]!,
+                              style: TextStyle(
+                                  color: isMe
+                                      ? Colors.white
+                                      : Colors.black,
+                                  fontSize: 16),
+                            ),
+                            SizedBox(height: 3),
+                            Text(
+                              time,
+                              style: TextStyle(
+                                color: isMe
+                                    ? Colors.white70
+                                    : Colors.black54,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
-                        onSubmitted: (_) => sendMessage(),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.all(10),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.grey[200],
+                          borderRadius: BorderRadius.circular(30),
+                        ),
+                        child: Padding(
+                          padding:
+                          const EdgeInsets.symmetric(horizontal: 20),
+                          child: TextField(
+                            controller: _messageController,
+                            decoration: InputDecoration(
+                              hintText: "Type a message...",
+                              border: InputBorder.none,
+                              hintStyle: TextStyle(color: Colors.grey),
+                            ),
+                            onSubmitted: (_) => sendMessage(),
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    SizedBox(width: 10),
+                    CircleAvatar(
+                      backgroundColor: AppColors.primaryColor,
+                      child: IconButton(
+                        icon: Icon(Icons.send, color: Colors.white),
+                        onPressed: sendMessage,
+                      ),
+                    ),
+                  ],
                 ),
-                SizedBox(width: 10),
-                CircleAvatar(
-                  backgroundColor: AppColors.primaryColor,
-                  child: IconButton(
-                    icon: Icon(Icons.send, color: Colors.white),
-                    onPressed: sendMessage,
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-
-        ],
+        ),
       ),
     );
   }
