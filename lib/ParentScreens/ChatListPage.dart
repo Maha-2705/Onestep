@@ -105,7 +105,7 @@ class _ChatListPageState extends State<ChatListPage> {
                   ? unreadData["unreadCount"]
                   : int.tryParse(unreadData["unreadCount"].toString()) ?? 0;
             } else {
-              print("⚠️ Unexpected response format for unread messages.");
+              print(" Unexpected response format for unread messages.");
             }
           } catch (e) {
             print("Error parsing unread messages: $e");
@@ -197,10 +197,21 @@ class _ChatListPageState extends State<ChatListPage> {
                       Text(user["time"], style: TextStyle(fontSize: 12, color: Colors.grey)), // Show time
                       if (user["unreadCount"] > 0)
                         CircleAvatar(
-                          radius: 12,
+                          radius: 10,
                           backgroundColor: Colors.red,
-                          child: Text(user["unreadCount"].toString(), style: TextStyle(color: Colors.white)),
+                          child: Center(
+                            child: Text(
+                              user["unreadCount"].toString(),
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center, // Ensure the text is centered
+                            ),
+                          ),
                         ),
+
                     ],
                   ),
                   onTap: () async {
@@ -214,9 +225,12 @@ class _ChatListPageState extends State<ChatListPage> {
                           builder: (context) => MessagesPage(
                             currentUserId: currentUserId,
                             providerId: user["id"],
+                            profilePicture: user["profilePicture"],
+                            fullName: user["fullName"],
                           ),
                         ),
                       );
+
                     } else {
                       print("User ID not found in SharedPreferences");
                     }

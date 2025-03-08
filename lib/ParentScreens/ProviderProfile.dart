@@ -5,6 +5,7 @@ import 'package:http/http.dart' as http;
 import 'package:one_step/ParentScreens/Bookingslot.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../AppColors.dart';
+import '../ParentScreens/messages_page.dart';
 import 'ReviewPage.dart';
 
 class DoctorProfilePage extends StatefulWidget {
@@ -169,7 +170,22 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
       icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.red : Colors.grey),
       onPressed: _toggleFavorite,
     ),
-          IconButton(icon: Icon(Icons.message), onPressed: () {}),
+          IconButton(icon: Icon(Icons.message), onPressed: () async {
+            SharedPreferences prefs = await SharedPreferences.getInstance();
+            String? storedUserId = prefs.getString("user_id");
+
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => MessagesPage(
+                  currentUserId: storedUserId!,
+                  providerId: providerDetails?["_id"],
+                  profilePicture: providerDetails?["profilePicture"],
+                  fullName: providerDetails?["fullName"],
+                ),
+              ),
+            );
+          }),
         ],
       ),
       body: isLoading

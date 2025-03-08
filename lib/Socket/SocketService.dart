@@ -54,6 +54,8 @@ class SocketService with ChangeNotifier {
       "roomId": roomId,
       "message": message,
       "sender": senderId,
+      "provider": receiverId,
+      "userid": senderId,
       "reciever": receiverId,
     });
   }
