@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:intl/intl.dart';
-
 import 'package:flutter/material.dart';
 import 'package:one_step/AppColors.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../ParentScreens/messages_page.dart';
+import '../Socket/SocketService.dart';
 
 class ChatListPage extends StatefulWidget {
   @override
@@ -14,13 +14,33 @@ class ChatListPage extends StatefulWidget {
 
 class _ChatListPageState extends State<ChatListPage> {
   List<Map<String, dynamic>> messages = [];
+  Map<String, bool> onlineStatus = {}; // Store online/offline status
+
+  late SocketService socketService;
 
   @override
   void initState() {
     super.initState();
+    socketService = SocketService();
     loadOldMessages();
-  }
+    socketService.connect(""); // Connect socket
 
+    // Listen for user online
+    socketService.socket?.on("UserOnline", (data) {
+      String userId = data["userId"];
+      setState(() {
+        onlineStatus[userId] = true;
+      });
+    });
+
+    // Listen for user offline
+    socketService.socket?.on("UserOut", (data) {
+      String userId = data["userId"];
+      setState(() {
+        onlineStatus[userId] = false;
+      });
+    });
+  }
 
   Future<void> loadOldMessages() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -54,9 +74,6 @@ class _ChatListPageState extends State<ChatListPage> {
     try {
       final res = await http.get(Uri.parse(url), headers: headers);
 
-      print("Provider API Response Status: ${res.statusCode}");
-      print("Provider API Response Body: ${res.body}");
-
       if (res.statusCode == 200) {
         final List<dynamic> providers = jsonDecode(res.body);
         List<Map<String, dynamic>> updatedMessages = [];
@@ -69,12 +86,10 @@ class _ChatListPageState extends State<ChatListPage> {
 
           // Fetch last message
           final lastMessageRes = await http.get(
-            Uri.parse("https://1steptest.vercel.app/server/message/getlastmessage/$roomID"),
+            Uri.parse(
+                "https://1steptest.vercel.app/server/message/getlastmessage/$roomID"),
             headers: headers,
           );
-
-          print("Last Message API Response for $roomID - Status: ${lastMessageRes.statusCode}");
-          print("Last Message API Response Body: ${lastMessageRes.body}");
 
           String lastMessage = "No message yet";
           String formattedTime = "";
@@ -82,66 +97,57 @@ class _ChatListPageState extends State<ChatListPage> {
           if (lastMessageRes.statusCode == 200) {
             final lastMessageData = jsonDecode(lastMessageRes.body);
             lastMessage = lastMessageData["message"] ?? "No message yet";
-
-            // Extract and format the time
             String createdAt = lastMessageData["createdAt"] ?? "";
             formattedTime = _formatTime(createdAt);
           }
 
           // Fetch unread messages count
           final unreadCountRes = await http.get(
-            Uri.parse("https://1steptest.vercel.app/server/message/getunreadmessagescount/$roomID?reciever=$userId"),
+            Uri.parse(
+                "https://1steptest.vercel.app/server/message/getunreadmessagescount/$roomID?reciever=$userId"),
             headers: headers,
           );
 
-          print("Unread Messages API Response for $roomID - Status: ${unreadCountRes.statusCode}");
-          print("Unread Messages API Response Body: ${unreadCountRes.body}");
-
           int unreadCount = 0;
-          try {
+          if (unreadCountRes.statusCode == 200) {
             final unreadData = jsonDecode(unreadCountRes.body);
-            if (unreadData is Map && unreadData.containsKey("unreadCount")) {
-              unreadCount = unreadData["unreadCount"] is int
-                  ? unreadData["unreadCount"]
-                  : int.tryParse(unreadData["unreadCount"].toString()) ?? 0;
-            } else {
-              print(" Unexpected response format for unread messages.");
-            }
-          } catch (e) {
-            print("Error parsing unread messages: $e");
+            unreadCount = unreadData["unreadCount"] ?? 0;
           }
 
-          // **Add provider details to the list**
+          // *Add provider details to the list*
           updatedMessages.add({
             "id": providerId,
             "fullName": fullName,
             "profilePicture": profilePicture,
             "lastMessage": lastMessage,
             "unreadCount": unreadCount,
-            "time": formattedTime,  // Store formatted time
+            "time": formattedTime,
           });
+
+          socketService.socket?.emit("checkUserStatus", {
+            "userId": providerId
+          });
+          print("Emit checkUserStatus event for providerId: $providerId");
         }
 
-        // **Update the state with the new message list**
-        setState(() {
+          setState(() {
           messages = updatedMessages;
         });
       }
     } catch (e) {
-      print(" Error fetching messages: $e");
-    }
-  }
-  String _formatTime(String timestamp) {
-    if (timestamp.isEmpty) return "";
-    try {
-      DateTime parsedTime = DateTime.parse(timestamp).toLocal(); // Convert to local time
-      return DateFormat('hh:mm a').format(parsedTime); // Example: "10:39 AM"
-    } catch (e) {
-      print(" Error formatting time: $e");
-      return "";
+      print("Error fetching messages: $e");
     }
   }
 
+  String _formatTime(String timestamp) {
+    if (timestamp.isEmpty) return "";
+    try {
+      DateTime parsedTime = DateTime.parse(timestamp).toLocal();
+      return DateFormat('hh:mm a').format(parsedTime);
+    } catch (e) {
+      return "";
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -154,7 +160,6 @@ class _ChatListPageState extends State<ChatListPage> {
       ),
       body: Column(
         children: [
-          // Search Bar
           Padding(
             padding: EdgeInsets.all(15),
             child: TextField(
@@ -170,23 +175,33 @@ class _ChatListPageState extends State<ChatListPage> {
               ),
             ),
           ),
-
-          // Chat List
           Expanded(
             child: messages.isEmpty
-                ? Center(child: CircularProgressIndicator()) // Loading Indicator
+                ? Center(child: CircularProgressIndicator())
                 : ListView.builder(
               itemCount: messages.length,
-
               itemBuilder: (context, index) {
                 final user = messages[index];
+                bool isOnline = onlineStatus[user["id"]] ?? false;
 
                 return ListTile(
-                  leading: CircleAvatar(
-                    radius: 25,
-                    backgroundImage: user["profilePicture"].isNotEmpty
-                        ? NetworkImage(user["profilePicture"])
-                        : AssetImage("assets/default_profile.png") as ImageProvider,
+                  leading: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 25,
+                        backgroundImage: user["profilePicture"].isNotEmpty
+                            ? NetworkImage(user["profilePicture"])
+                            : AssetImage("assets/default_profile.png") as ImageProvider,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: CircleAvatar(
+                          radius: 5,
+                          backgroundColor: isOnline ? Colors.green : Colors.grey,
+                        ),
+                      )
+                    ],
                   ),
                   title: Text(user["fullName"], style: TextStyle(fontWeight: FontWeight.bold)),
                   subtitle: Text(user["lastMessage"], maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -194,24 +209,16 @@ class _ChatListPageState extends State<ChatListPage> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
-                      Text(user["time"], style: TextStyle(fontSize: 12, color: Colors.grey)), // Show time
+                      Text(user["time"], style: TextStyle(fontSize: 12, color: Colors.grey)),
                       if (user["unreadCount"] > 0)
                         CircleAvatar(
                           radius: 10,
                           backgroundColor: Colors.red,
-                          child: Center(
-                            child: Text(
-                              user["unreadCount"].toString(),
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                              textAlign: TextAlign.center, // Ensure the text is centered
-                            ),
+                          child: Text(
+                            user["unreadCount"].toString(),
+                            style: TextStyle(color: Colors.white, fontSize: 12),
                           ),
                         ),
-
                     ],
                   ),
                   onTap: () async {
@@ -240,15 +247,6 @@ class _ChatListPageState extends State<ChatListPage> {
             ),
           ),
         ],
-      ),
-
-      // Floating Button for New Chat
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          print("New Chat");
-        },
-        backgroundColor: AppColors.primaryColor,
-        child: Icon(Icons.add, color: Colors.white),
       ),
     );
   }

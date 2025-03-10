@@ -92,7 +92,7 @@ class _ChatScreenState extends State<MessagesPage> {
       if (response.statusCode == 200) {
         List<dynamic> data = json.decode(response.body);
 
-        // Convert the messages to List<Map>
+        //  Convert the messages to List<Map>
         List<Map<String, dynamic>> sortedMessages =
         List<Map<String, dynamic>>.from(data);
 
@@ -100,16 +100,20 @@ class _ChatScreenState extends State<MessagesPage> {
         sortedMessages.sort((a, b) =>
             DateTime.parse(a["createdAt"]).compareTo(DateTime.parse(b["createdAt"])));
 
-        // Convert the time to Local Time
+        //  Convert UTC time to Local Time for each message
         for (var message in sortedMessages) {
-          message["createdAt"] = convertToLocalTime(message["createdAt"]);
+          message["createdAt"] = DateTime.parse(message["createdAt"])
+              .toLocal()
+              .toIso8601String();
         }
 
+
+        //  Update the message state
         setState(() {
           messages = sortedMessages;
         });
 
-        //  Mark unread messages as read
+        // Mark unread messages as read
         List<Map<String, dynamic>> unreadMessages = messages.where((msg) =>
         msg["read"] == false && msg["sender"] != widget.currentUserId).toList();
 
@@ -117,7 +121,7 @@ class _ChatScreenState extends State<MessagesPage> {
           await markMessageAsRead(msg["_id"]);
         }
       } else {
-        print("Error: Failed to fetch messages.");
+        print(" Error: Failed to fetch messages.");
       }
     } catch (error) {
       print("Exception Occurred: $error");
@@ -127,6 +131,7 @@ class _ChatScreenState extends State<MessagesPage> {
       isLoading = false;
     });
   }
+
 
   /// Function to Convert UTC Time to Local Time
   String convertToLocalTime(String utcTime) {
@@ -177,16 +182,18 @@ class _ChatScreenState extends State<MessagesPage> {
     }
   }
 
-
   void sendMessage() {
     if (_messageController.text.isEmpty) return;
     final socketService = Provider.of<SocketService>(context, listen: false);
     String timeStamp = DateTime.now().toIso8601String();
 
+    String messageText = _messageController.text;
+    _messageController.clear();
+
     // Emit the message to the server
     socketService.sendMessage(
       "${widget.currentUserId}_${widget.providerId}",
-      _messageController.text,
+      messageText,
       widget.currentUserId,
       widget.providerId,
     );
@@ -195,21 +202,42 @@ class _ChatScreenState extends State<MessagesPage> {
     setState(() {
       messages.add({
         "sender": widget.currentUserId,
-        "message": _messageController.text,
+        "message": messageText,
         "provider": widget.providerId,
         "userid": widget.currentUserId,
         "createdAt": timeStamp,
+
       });
+      // Sort messages safely
+      messages.sort((a, b) {
+        DateTime dateA;
+        DateTime dateB;
 
-      //  Sort messages again by time
-      messages.sort((a, b) =>
-          DateTime.parse(a["createdAt"]).compareTo(DateTime.parse(b["createdAt"])));
+        try {
+          dateA = DateTime.parse(a["createdAt"]);
+          dateB = DateTime.parse(b["createdAt"]);
+        } catch (e) {
+          dateA = DateTime.now();
+          dateB = DateTime.now();
+        }
+
+        return dateA.compareTo(dateB);
+      });
     });
-
-    //  Clear text field
-    _messageController.clear();
   }
 
+  String formatTime(String? timeStamp) {
+    if (timeStamp == null || timeStamp.isEmpty) return "Now";
+
+    try {
+      //  Always convert to local time
+      DateTime dateTime = DateTime.parse(timeStamp).toLocal();
+      return DateFormat.jm().format(dateTime);
+    } catch (e) {
+      print("Time Error: $e");
+      return "Now";
+    }
+  }
 
 
   @override
@@ -269,7 +297,9 @@ class _ChatScreenState extends State<MessagesPage> {
                   itemBuilder: (context, index) {
                     final message = messages[index];
                     bool isMe = message["sender"] == widget.currentUserId;
-                    String time = (message["createdAt"]);
+
+                    //  Always use local time or fallback to "Now"
+                    String time = formatTime(message["createdAt"]);
 
                     return Align(
                       alignment: isMe
@@ -301,7 +331,7 @@ class _ChatScreenState extends State<MessagesPage> {
                               : CrossAxisAlignment.start,
                           children: [
                             Text(
-                              message["message"]!,
+                              message["message"] ?? "",
                               style: TextStyle(
                                   color: isMe
                                       ? Colors.white
@@ -325,6 +355,8 @@ class _ChatScreenState extends State<MessagesPage> {
                   },
                 ),
               ),
+
+
               Padding(
                 padding: EdgeInsets.all(10),
                 child: Row(
