@@ -13,12 +13,16 @@ class MessagesPage extends StatefulWidget {
   final String providerId;
   final String profilePicture;
   final String fullName;
+  final bool isOnline; // Add this parameter
+
 
   MessagesPage({
     required this.currentUserId,
     required this.providerId,
     required this.profilePicture,
     required this.fullName,
+    required this.isOnline, // Accept it here
+
   });
 
   @override
@@ -272,8 +276,11 @@ class _ChatScreenState extends State<MessagesPage> {
                   Text(widget.fullName,
                       style: TextStyle(
                           fontWeight: FontWeight.bold, color: Colors.white70)),
-                  Text("Online",
-                      style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  Text(
+                    widget.isOnline ? "Online" : "Offline",
+                    style: TextStyle(color: widget.isOnline ? Colors.green : Colors.grey,fontSize: 14),
+                  ),
+
                 ],
               ),
             ],

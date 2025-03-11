@@ -174,17 +174,7 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
             SharedPreferences prefs = await SharedPreferences.getInstance();
             String? storedUserId = prefs.getString("user_id");
 
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => MessagesPage(
-                  currentUserId: storedUserId!,
-                  providerId: providerDetails?["_id"],
-                  profilePicture: providerDetails?["profilePicture"],
-                  fullName: providerDetails?["fullName"],
-                ),
-              ),
-            );
+
           }),
         ],
       ),
