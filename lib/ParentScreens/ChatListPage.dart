@@ -21,18 +21,9 @@ class _ChatListPageState extends State<ChatListPage> {
   void initState() {
     super.initState();
     loadOldMessages();
-    connectSocket();
   }
 
-  // Connect to the socket
-  void connectSocket() async {
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    userId = prefs.getString('user_id');
 
-    if (userId != null) {
-      Provider.of<SocketService>(context, listen: false).connect(userId!);
-    }
-  }
 
   // Fetch messages from API
   Future<void> loadOldMessages() async {

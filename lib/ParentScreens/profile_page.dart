@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:one_step/AppColors.dart';
+import 'package:one_step/Auth/SignInPage.dart';
 import 'package:one_step/ParentScreens/ChangePasswordscreen.dart';
 import 'package:one_step/ParentScreens/EditParent.dart';
 import 'package:image_picker/image_picker.dart';
@@ -34,6 +35,50 @@ class _ProfilePageState extends State<ProfilePage> {
     fetchParentprofile();
 
 
+  }
+
+  void signout() async {
+    SharedPreferences prefs = await SharedPreferences.getInstance();
+    String? token = prefs.getString('access_token');
+    String? googleToken = prefs.getString('google_access_token');
+
+    try {
+      String cookieHeader = "";
+      if (token != null && token.isNotEmpty) {
+        cookieHeader += "access_token=$token;";
+      }
+      if (googleToken != null && googleToken.isNotEmpty) {
+        cookieHeader += "google_access_token=$googleToken;";
+      }
+
+      var response = await http.get(
+        Uri.parse("https://1steptest.vercel.app/server/auth/signout"),
+        headers: {
+          "Content-Type": "application/json",
+          if (cookieHeader.isNotEmpty) "Cookie": cookieHeader,
+        },
+      );
+
+      print("Response Status Code: ${response.statusCode}");
+      print("Raw Response Body: ${response.body}");
+
+      if (response.statusCode == 200 || response.statusCode == 201) {
+        var jsonResponse = jsonDecode(response.body);
+
+        // Clear stored user data
+        await prefs.clear();
+
+        // Navigate to the sign-in page
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => SignInPage()), // Replace with your sign-in screen
+        );
+      } else {
+        print("❌ Failed to sign out: ${response.body}");
+      }
+    } catch (e) {
+      print("❌ Error signing out: $e");
+    }
   }
 
 
@@ -265,6 +310,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   child: ElevatedButton.icon(
                     onPressed: () {
                       // Logout functionality
+                      signout();
                     },
                     icon: Icon(Icons.logout),
                     label: Text("Sign Out"),
