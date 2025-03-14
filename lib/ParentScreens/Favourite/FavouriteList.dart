@@ -4,8 +4,9 @@ import 'dart:convert';
 import 'package:one_step/AppColors.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../AppColors.dart';
-import 'ProviderProfile.dart';
+
+import '../Bookings/ProviderProfile.dart';
+
 
 class FavouriteListScreen extends StatefulWidget {
   @override

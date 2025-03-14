@@ -1,16 +1,17 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:one_step/AppColors.dart';
-import 'package:one_step/Auth/SignInPage.dart';
-import 'package:one_step/ParentScreens/ChangePasswordscreen.dart';
-import 'package:one_step/ParentScreens/EditParent.dart';
+
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'FavouriteList.dart';
+
+import '../../Auth/Parent/SignInPage.dart';
+import '../Favourite/FavouriteList.dart';
+import 'EditParent.dart';
 import 'SettingScreen.dart';
 
 class ProfilePage extends StatefulWidget {

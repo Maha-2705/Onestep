@@ -2,10 +2,9 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:one_step/ParentScreens/Bookingslot.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../AppColors.dart';
-import '../ParentScreens/messages_page.dart';
+import '../../AppColors.dart';
+import 'Bookingslot.dart';
 import 'ReviewPage.dart';
 
 class DoctorProfilePage extends StatefulWidget {

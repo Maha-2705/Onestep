@@ -4,10 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import 'package:http/http.dart' as http;
-import 'package:one_step/Auth/SignInPage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../AppColors.dart';
-import 'ProviderProfile.dart';
+
+import '../../AppColors.dart';
+import '../Bookings/ProviderProfile.dart';
+
 
 class AppointmentsPage extends StatefulWidget {
   @override

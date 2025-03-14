@@ -1,117 +1,117 @@
 import 'dart:convert';
-
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:one_step/AppColors.dart';
-import 'package:one_step/ParentScreens/ParentDashBoard.dart';
-import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:dio_cookie_manager/dio_cookie_manager.dart';
-import 'package:cookie_jar/cookie_jar.dart';
-import 'package:dio/dio.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:one_step/ProviderScreens/ProviderDetailsPage.dart';
+import 'package:one_step/config.dart';
 import 'package:http/http.dart' as http;
 import 'package:sign_in_button/sign_in_button.dart';
+
 import 'package:google_sign_in/google_sign_in.dart';
-import '../ParentScreens/DetailsPage.dart';
-import '../ProviderScreens/ProviderDetailsPage.dart';
-import 'package:one_step/Auth/SignInPage.dart';
 
-import 'package:one_step/Auth/ProviderSignUpPage.dart';
+import 'package:cookie_jar/cookie_jar.dart';
 
-import 'package:one_step/Auth/ResetPassword.dart';
+import 'package:dio_cookie_manager/dio_cookie_manager.dart';
+
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+import '../Parent/SignInPage.dart';
+import 'ProviderSignInPage.dart';
 
 
-
-class ProviderSignInPage extends StatefulWidget {
+class ProviderSignUpPage extends StatefulWidget {
   @override
-  _SignInPageState createState() => _SignInPageState();
+  _RegistrationState createState() => _RegistrationState();
 }
+class _RegistrationState extends State<ProviderSignUpPage> {
+  final Dio dio = Dio();
+  final FlutterSecureStorage storage = FlutterSecureStorage();
+  final CookieJar cookieJar = CookieJar();
 
-class _SignInPageState extends State<ProviderSignInPage> {
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
-  bool _isChecked = false;
+  TextEditingController nameController = TextEditingController();
   bool _isObscure = true; // Add this variable to track password visibility
 
-  late SharedPreferences prefs;
-  void SignIn() async {
+  bool _termsAccepted = false;
+
+  void SignUp() async {
+    String username = nameController.text.trim();
     String email = emailController.text.trim();
     String password = passwordController.text.trim();
 
-    if (email.isEmpty || !RegExp(r"^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$").hasMatch(email)) {
+    if (username.isEmpty || username.length < 3 || username.length > 15) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Please enter a valid email address.")),
+        SnackBar(content: Text("Name must be between 3 and 15 characters.")),
       );
       return;
     }
 
-    if (password.isEmpty || password.length < 6) {
+    if (!RegExp(r"^[a-zA-Z0-9]+@[a-zA-Z]+\.[a-zA-Z]+").hasMatch(email)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Password must be at least 6 characters.")),
+        SnackBar(content: Text("Enter a valid email address.")),
       );
       return;
     }
 
-    var loginBody = {"email": email, "password": password};
-    final dio = Dio();
-    final cookieJar = CookieJar();
-    dio.interceptors.add(CookieManager(cookieJar));
+    if (!RegExp(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$").hasMatch(password)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Password must be at least 8 characters, include an uppercase letter, a number, and a special character.")),
+      );
+      return;
+    }
+
+    if (!_termsAccepted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("You must accept the terms and conditions.")),
+      );
+      return;
+    }
+
+    String role = "Provider";
+
+    var regBody = {
+      "username": username,
+      "email": email,
+      "password": password,
+      "roleType": role,
+    };
 
     try {
-      var response = await dio.post(
-        "https://1steptest.vercel.app/server/auth/signin",
-        data: loginBody,
-        options: Options(headers: {"Content-Type": "application/json"}),
-      );
+      print('Sending request to server...');
+      print('Request Body: $regBody');
 
-      if (response.statusCode == 200) {
-        var jsonResponse = response.data;
+      var response = await http
+          .post(
+        Uri.parse("https://1steptest.vercel.app/server/auth/signup"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode(regBody),
+      )
+          .timeout(const Duration(seconds: 10));
 
-        List<Cookie> cookies = await cookieJar.loadForRequest(Uri.parse("https://1steptest.vercel.app/server/auth/signin"));
-        String? accessToken;
-        String? refreshToken;
+      print('Response Status: ${response.statusCode}');
+      print('Response Body: ${response.body}');
 
-        for (var cookie in cookies) {
-          if (cookie.name == "access_token") {
-            accessToken = cookie.value;
-          } else if (cookie.name == "refresh_token") {
-            refreshToken = cookie.value;
-          }
-        }
+      var jsonResponse = jsonDecode(response.body);
 
-        if (accessToken != null && refreshToken != null) {
-          final storage = FlutterSecureStorage();
-          await storage.write(key: 'access_token', value: accessToken);
-          await storage.write(key: 'refresh_token', value: refreshToken);
-        }
-
-        var Id = jsonResponse['_id'];
-        SharedPreferences prefs = await SharedPreferences.getInstance();
-        prefs.setString('ID', Id);
-        prefs.setString('Access_token', accessToken ?? "");
-
-        var role = jsonResponse['role'];
-        if (role != null && role['role'] == 'Provider') {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(jsonResponse['message'] ?? "Login successful!")),
-          );
-
-          Navigator.pushReplacement(
-            context,
-            MaterialPageRoute(builder: (context) => ProviderDetailsPage(userId: Id)),
-          );
-        } else {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text("You are not a Parent user.")),
-          );
-        }
+      if (jsonResponse['success']) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(jsonResponse['message'] ?? "Registered successfully!")),
+        );
+        Navigator.push(context, MaterialPageRoute(builder: (context) => ProviderSignInPage()));
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Server error: ${response.statusCode}")),
+          SnackBar(content: Text(jsonResponse['message'] ?? "Something went wrong. Please try again.")),
         );
       }
     } catch (e) {
+      print('Error occurred: $e');
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Incorrect Username and Password")),
+        SnackBar(content: Text("An error occurred. Please check your connection.")),
       );
     }
   }
@@ -190,9 +190,9 @@ class _SignInPageState extends State<ProviderSignInPage> {
         var Id = responseData['_id'];
 
         SharedPreferences prefs = await SharedPreferences.getInstance();
-        prefs.setString('Google_User_Id', Id);
+        prefs.setString('GoogleuserId', Id);
 
-        prefs.setString('Google_token', accessToken ?? "");
+        prefs.setString('Google_access_token', accessToken ?? "");
         if (responseData is Map<String, dynamic>) {
           print("User data stored successfully!");
 
@@ -220,6 +220,7 @@ class _SignInPageState extends State<ProviderSignInPage> {
       );
     }
   }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -232,6 +233,7 @@ class _SignInPageState extends State<ProviderSignInPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 40),
+
                 // Instruction Text
                 Center(
                   child: GestureDetector(
@@ -246,9 +248,9 @@ class _SignInPageState extends State<ProviderSignInPage> {
                       "Are you Parent? Click here",
                       style: TextStyle(
                         fontSize: 16,
+                        fontFamily:'afacad',
                         fontWeight: FontWeight.w600,
                         color: Colors.black,
-                          fontFamily:'afacad',
                       ),
                     ),
                   ),
@@ -267,35 +269,35 @@ class _SignInPageState extends State<ProviderSignInPage> {
                       ),
                       const SizedBox(height: 10),
                       const Text(
-                        'Welcome back',
+                        'Get Started',
                         style: TextStyle(
                           fontSize: 28,
+                          fontFamily:'afacad',
                           fontWeight: FontWeight.bold,
-                            fontFamily:'afacad',
                         ),
                       ),
                       const SizedBox(height: 10),
                       Text(
-                        'Signin to access your account',
+                        'by creating a free account.',
                         style: TextStyle(
                           fontSize: 16,
+                          fontFamily:'afacad',
                           color: AppColors.greycolor,
-                            fontFamily:'afacad',
                         ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(height: 40),
-                // Email TextField
+                const SizedBox(height: 30),
+                // Full Name Field
                 TextField(
                   style: TextStyle(
                     fontFamily:'afacad',
                   ),
-                  controller: emailController,
+                  controller: nameController,
                   decoration: InputDecoration(
-                    hintText: 'Email',
-                    prefixIcon: const Icon(Icons.email_outlined),
+                    hintText: 'Full name',
+                    prefixIcon: const Icon(Icons.person_outline),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12.0),
                       borderSide: BorderSide.none,
@@ -305,84 +307,105 @@ class _SignInPageState extends State<ProviderSignInPage> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                // Password TextField
+                // Email Field
                 TextField(
                   style: TextStyle(
-                    fontFamily: 'afacad',
+                    fontFamily:'afacad',
                   ),
-                  controller: passwordController,
-                  obscureText: _isObscure,
+                  controller: emailController,
                   decoration: InputDecoration(
-                    hintText: 'Password',
-                    prefixIcon: const Icon(Icons.lock_outline),
-                    suffixIcon: IconButton(
-                      icon: Icon(
-                        _isObscure ? Icons.visibility_off : Icons.visibility,
-                      ),
-                      onPressed: () {
-                        setState(() {
-                          _isObscure = !_isObscure;
-                        });
-                      },
-                    ),
+                    hintText: 'Valid email',
+                    prefixIcon: const Icon(Icons.email_outlined),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12.0),
                       borderSide: BorderSide.none,
                     ),
                     filled: true,
-                    fillColor: AppColors.textfieldcolor,
+                    fillColor:AppColors.textfieldcolor,
                   ),
                 ),
-                const SizedBox(height: 10),
-                // Remember Me and Forgot Password Row
+                const SizedBox(height: 20),
+                // Password Field
+
+          TextField(
+          style: TextStyle(
+          fontFamily: 'afacad',
+          ),
+          controller: passwordController,
+          obscureText: _isObscure,
+          decoration: InputDecoration(
+            hintText: 'Password',
+            prefixIcon: const Icon(Icons.lock_outline),
+            suffixIcon: IconButton(
+              icon: Icon(
+                _isObscure ? Icons.visibility_off : Icons.visibility,
+              ),
+              onPressed: () {
+                setState(() {
+                  _isObscure = !_isObscure;
+                });
+              },
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12.0),
+              borderSide: BorderSide.none,
+            ),
+            filled: true,
+            fillColor: AppColors.textfieldcolor,
+          ),
+        ),
+
+        const SizedBox(height: 20),
+                // Terms and Conditions Checkbox
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        Checkbox(
-                          value: _isChecked,
-                          onChanged: (value) {
-                            setState(() {
-                              _isChecked = value!;
-                            });
-                          },
-                          activeColor: AppColors.primaryColor, // Set the checkbox color to blue
-                        ),
-
-
-                        const Text('Remember me',
-                          style: TextStyle(
-                          fontFamily:'afacad',
-                        )),
-                      ],
-                    ),
-                    GestureDetector(
-                      onTap: () {
-                        // Navigate to Forgot Password Screen
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => ResetPasswordScreen()),
-                        );
+                    Checkbox(
+                      value: _termsAccepted,
+                      onChanged: (value) {
+                        setState(() {
+                          _termsAccepted = value ?? false;
+                        });
                       },
-                      child: const Text(
-                        'Forget password ?',
-                        style: TextStyle(
-                          color: AppColors.primaryColor,
-                          fontWeight: FontWeight.w500,
+                      activeColor: AppColors.primaryColor,
+                    ),
+                    const Expanded(
+                      child: Text.rich(
+                        TextSpan(
+                          text: 'By checking the box you agree to our ',
+                          style: TextStyle(
                             fontFamily:'afacad',
+                          ),
+                          children: [
+                            TextSpan(
+                              text: 'Terms',
+                              style: TextStyle(
+                                color: AppColors.primaryColor,
+                                fontWeight: FontWeight.bold,
+                                  fontFamily:'afacad',
+                              ),
+                            ),
+                            TextSpan(text: ' and '),
+                            TextSpan(
+                              text: 'Conditions.',
+                              style: TextStyle(
+                                color:AppColors.primaryColor,
+                                fontWeight: FontWeight.bold,
+                                  fontFamily:'afacad',
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 20),
                 // Next Button
                 SizedBox(
                   width: double.infinity,
                   height: 50,
                   child: ElevatedButton(
-                   onPressed: SignIn,
+                    onPressed: SignUp,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryColor,
                       shape: RoundedRectangleBorder(
@@ -390,7 +413,7 @@ class _SignInPageState extends State<ProviderSignInPage> {
                       ),
                     ),
                     child: const Text(
-                      'Login',
+                      'Register',
                       style: TextStyle(
                         fontSize: 16,
                         color: Colors.white,
@@ -408,7 +431,7 @@ class _SignInPageState extends State<ProviderSignInPage> {
                   child: OutlinedButton(
                     onPressed: Googlesignup,
                     style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: AppColors.greycolor),
+                      side: const BorderSide(color:AppColors.greycolor),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                     ),
                     child: Row(
@@ -425,27 +448,26 @@ class _SignInPageState extends State<ProviderSignInPage> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                // Register Now Row
+                // Already a member? Log In
                 Center(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('New user? ',
-                  style: TextStyle(
-                  fontFamily:'afacad',
-                ),),
+                      const Text('Already have an account? ',
+                          style: TextStyle(
+                            fontFamily:'afacad',
+                          )),
                       GestureDetector(
                         onTap: () {
-                          // Navigate to SignUpPage
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => ProviderSignUpPage()),
+                            MaterialPageRoute(builder: (context) => ProviderSignInPage()),
                           );
                         },
                         child: const Text(
-                          'Register',
+                          'Login',
                           style: TextStyle(
-                            color:AppColors.primaryColor,
+                            color: AppColors.primaryColor,
                             fontWeight: FontWeight.bold,
                               fontFamily:'afacad',
                           ),
@@ -454,7 +476,6 @@ class _SignInPageState extends State<ProviderSignInPage> {
                     ],
                   ),
                 ),
-
               ],
             ),
           ),

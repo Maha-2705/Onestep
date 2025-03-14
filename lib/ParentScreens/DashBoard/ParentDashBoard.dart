@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../AppColors.dart';
-import '../Socket/SocketService.dart';
-import 'ChatListPage.dart';
+
+import '../../AppColors.dart';
+import '../../ParentScreens/Appointments/appointments_page.dart';
+import '../../ParentScreens/Profile/profile_page.dart';
+import '../../Socket/SocketService.dart';
+import '../Message/ChatListPage.dart';
 import 'HomePage.dart';
-import 'appointments_page.dart';
-import 'messages_page.dart';
-import 'profile_page.dart';
+
 
 class ParentDashBoard extends StatefulWidget {
   final String userId;

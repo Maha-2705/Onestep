@@ -4,9 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../AppColors.dart';
-import '../Socket/SocketService.dart';
+
 import 'package:intl/intl.dart';
+
+import '../../AppColors.dart';
+import '../../Socket/SocketService.dart';
 
 class MessagesPage extends StatefulWidget {
   final String currentUserId;

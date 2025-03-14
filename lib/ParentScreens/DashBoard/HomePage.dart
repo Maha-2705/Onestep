@@ -1,17 +1,18 @@
 import 'dart:io';
 import 'package:http/http.dart' as http;
-import 'package:one_step/ParentScreens/ProviderProfile.dart';
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import '../AppColors.dart';
 import 'package:intl/intl.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:geocoding/geocoding.dart';
 
-import '../ParentScreens/search_page.dart';
+import '../../AppColors.dart';
+import '../../ParentScreens/Search/search_page.dart';
+import '../Bookings/ProviderProfile.dart';
+
 
 class HomePage extends StatefulWidget {
   @override

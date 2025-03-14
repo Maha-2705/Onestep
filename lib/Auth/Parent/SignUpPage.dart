@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:one_step/AppColors.dart';
-import 'package:one_step/ParentScreens/DetailsPage.dart';
 import 'package:one_step/config.dart';
 import 'package:http/http.dart' as http;
 import 'package:firebase_auth/firebase_auth.dart';
@@ -13,13 +12,15 @@ import 'package:cookie_jar/cookie_jar.dart';
 
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 
-import 'package:one_step/Auth/SignInPage.dart';
+import 'package:one_step/Auth/Parent/SignInPage.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../ParentScreens/ParentDashBoard.dart';
-import 'ProviderSignInPage.dart';
+
+import '../../ParentScreens/DashBoard/ParentDashBoard.dart';
+import '../../ParentScreens/Profile/DetailsPage.dart';
+import '../Provider/ProviderSignInPage.dart';
 
 
 class SignUpPage extends StatefulWidget {

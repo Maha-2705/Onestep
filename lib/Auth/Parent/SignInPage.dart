@@ -2,8 +2,6 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:one_step/AppColors.dart';
-import 'package:one_step/Auth/ResetPassword.dart';
-import 'package:one_step/ParentScreens/ParentDashBoard.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:dio_cookie_manager/dio_cookie_manager.dart';
 import 'package:sign_in_button/sign_in_button.dart';
@@ -15,11 +13,13 @@ import 'package:dio/dio.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cookie_jar/cookie_jar.dart';
-import '../ParentScreens/DetailsPage.dart';
-import '../ProviderScreens/ProviderDetailsPage.dart';
-import 'package:one_step/Auth/SignUpPage.dart';
+import 'package:one_step/Auth/Parent/SignUpPage.dart';
 
-import 'ProviderSignInPage.dart';
+import '../../ParentScreens/DashBoard/ParentDashBoard.dart';
+import '../../ParentScreens/Profile/DetailsPage.dart';
+import '../Provider/ProviderSignInPage.dart';
+import 'ResetPassword.dart';
+
 
 
 

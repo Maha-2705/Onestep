@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:one_step/AppColors.dart';
 import 'package:http/http.dart' as http;
-import 'package:one_step/Auth/SignInPage.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 class EditProfilePage extends StatefulWidget {
@@ -58,16 +57,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
         },
       );
 
-      print("Response Status Code: ${response.statusCode}");
-      print("Raw Response Body: ${response.body}");
 
-      // ✅ Allow both 200 & 201 status codes
+      //  Allow both 200 & 201 status codes
       if (response.statusCode == 200 || response.statusCode == 201) {
         var jsonResponse = jsonDecode(response.body);
 
         if (jsonResponse.containsKey('parentDetails')) {
           var parentDetails = jsonResponse['parentDetails'];
-          print("Extracted Parent Details: $parentDetails");
 
           setState(() {
             parentNameController.text = parentDetails['fullName'] ?? "";
@@ -91,10 +87,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
           print("Error: 'parentDetails' key is missing in the response.");
         }
       } else {
-        print("❌ Failed to fetch parent details: ${response.body}");
+        print(" Failed to fetch parent details: ${response.body}");
       }
     } catch (e) {
-      print("❌ Error fetching parent details: $e");
+      print(" Error fetching parent details: $e");
     }
   }
 
@@ -103,8 +99,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('access_token');
     String? Id = prefs.getString('user_id');
-    String? Googleuserid = prefs.getString('GoogleUserId');
-    print('Id: $Id');
 
     String? googleToken = prefs.getString('google_access_token');
 
@@ -133,10 +127,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     };
 
     try {
-      print('Sending request to server...');
-      print('Request Body: $regBody');
-      print('Access Token: $token');
-      print('Google Access Token: $googleToken');
+
 
       // Construct Cookie Header
       String cookieHeader = "";
@@ -146,7 +137,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
       if (googleToken != null && googleToken.isNotEmpty) {
         cookieHeader += "google_access_token=$googleToken;";
       }
-      print('cookie token: $cookieHeader');
 
       var response = await http.post(
         Uri.parse(
@@ -159,8 +149,6 @@ class _EditProfilePageState extends State<EditProfilePage> {
         body: jsonEncode(regBody),
       ).timeout(const Duration(seconds: 30)); // Reduced timeout for better UX
 
-      print('Response Status: ${response.statusCode}');
-      print('Response Body: ${response.body}');
 
       // Handle the response
       if (response.statusCode == 200) {

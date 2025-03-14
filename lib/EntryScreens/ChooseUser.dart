@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:one_step/Auth/SignInPage.dart'; // Create this screen separately
-import 'package:one_step/Auth/ProviderSignInPage.dart';
+import 'package:one_step/Auth/Parent/SignInPage.dart'; // Create this screen separately
 
-import '../AppColors.dart'; // Create this screen separately
+import '../AppColors.dart';
+import '../Auth/Provider/ProviderSignInPage.dart'; // Create this screen separately
 
 class Chooseuser extends StatelessWidget {
   @override

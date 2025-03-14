@@ -5,8 +5,11 @@ import 'package:intl/intl.dart';
 import 'package:one_step/AppColors.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../ParentScreens/messages_page.dart';
-import '../Socket/SocketService.dart';
+import 'package:logger/logger.dart';
+
+import '../../ParentScreens/Message/messages_page.dart';
+import '../../Socket/SocketService.dart';
+
 
 class ChatListPage extends StatefulWidget {
   @override
@@ -16,6 +19,12 @@ class ChatListPage extends StatefulWidget {
 class _ChatListPageState extends State<ChatListPage> {
   List<Map<String, dynamic>> messages = [];
   String? userId;
+  final Logger logger = Logger(
+    printer: PrettyPrinter(
+      methodCount: 20, // Increase stacktrace depth
+      errorMethodCount: 20, // Increase error stacktrace depth
+    ),
+  );
 
   @override
   void initState() {
@@ -23,32 +32,38 @@ class _ChatListPageState extends State<ChatListPage> {
     loadOldMessages();
   }
 
-
-
-  // Fetch messages from API
   Future<void> loadOldMessages() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('access_token');
     userId = prefs.getString('user_id');
     String? googleToken = prefs.getString('google_access_token');
 
-    if (userId == null) return;
+    if (userId == null) {
+      logger.w("User ID is null, skipping message fetch.");
+      return;
+    }
 
     final url = "https://1steptest.vercel.app/server/message/getprovider/$userId";
+    logger.i("Fetching providers from: $url");
 
     Map<String, String> headers = {"Content-Type": "application/json"};
 
     String cookieHeader = "";
     if (token != null && token.isNotEmpty) cookieHeader += "access_token=$token;";
     if (googleToken != null && googleToken.isNotEmpty) cookieHeader += "google_access_token=$googleToken;";
-    if (cookieHeader.isNotEmpty) headers["Cookie"] = cookieHeader;
+    if (cookieHeader.isNotEmpty) {
+      headers["Cookie"] = cookieHeader;
+      logger.d("Using Cookie Header: $cookieHeader");
+    }
 
     try {
       final res = await http.get(Uri.parse(url), headers: headers);
+      logger.i("Response Status: ${res.statusCode}");
 
       if (res.statusCode == 200) {
         final List<dynamic> providers = jsonDecode(res.body);
         List<Map<String, dynamic>> updatedMessages = [];
+        logger.i("Providers fetched: ${providers.length}");
 
         for (var provider in providers) {
           String providerId = provider["_id"];
@@ -56,7 +71,8 @@ class _ChatListPageState extends State<ChatListPage> {
           String profilePicture = provider["profilePicture"] ?? "";
           String roomID = "${userId}_$providerId";
 
-          // Fetch last message
+          logger.d("Fetching last message for RoomID: $roomID");
+
           final lastMessageRes = await http.get(
             Uri.parse("https://1steptest.vercel.app/server/message/getlastmessage/$roomID"),
             headers: headers,
@@ -70,6 +86,10 @@ class _ChatListPageState extends State<ChatListPage> {
             lastMessage = lastMessageData["message"] ?? "No message yet";
             String createdAt = lastMessageData["createdAt"] ?? "";
             formattedTime = _formatTime(createdAt);
+
+            logger.d("Last message: $lastMessage at $formattedTime");
+          } else {
+            logger.w("Failed to fetch last message. Status: ${lastMessageRes.statusCode}");
           }
 
           updatedMessages.add({
@@ -84,12 +104,15 @@ class _ChatListPageState extends State<ChatListPage> {
         setState(() {
           messages = updatedMessages;
         });
+
+        logger.i("Messages fetched successfully.");
+      } else {
+        logger.e("Failed to fetch providers. Status: ${res.statusCode}");
       }
-    } catch (e) {
-      print("Error fetching messages: $e");
+    } catch (e, stackTrace) {
+      logger.e("Error fetching messages: $e", error: e, stackTrace: stackTrace);
     }
   }
-
   String _formatTime(String timestamp) {
     if (timestamp.isEmpty) return "";
     try {

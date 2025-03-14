@@ -4,8 +4,9 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../AppColors.dart';
-import 'ProviderProfile.dart';
+import '../Bookings/ProviderProfile.dart';
+
+
 
 class SearchPage extends StatefulWidget {
   @override

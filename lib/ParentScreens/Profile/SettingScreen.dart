@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -6,8 +7,9 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:logger/logger.dart';
 
-import '../AppColors.dart';
+import '../../AppColors.dart';
 import 'ChangePasswordscreen.dart';
 
 class ProfileSettingsScreen extends StatefulWidget {
@@ -26,6 +28,7 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
   String? _downloadUrl;
   File? _profileImage;
   final picker = ImagePicker();
+  final Logger logger = Logger();
 
   @override
   void initState() {
@@ -33,7 +36,6 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
     _loadUserId();
     fetchParentprofile();
   }
-
 
   void fetchParentprofile() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -58,57 +60,43 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
         },
       );
 
-      print("Response Status Code: ${response.statusCode}");
-      print("Raw Response Body: ${response.body}");
-
       if (response.statusCode == 200 || response.statusCode == 201) {
         var jsonResponse = jsonDecode(response.body);
 
         if (jsonResponse.containsKey('profilePicture')) {
           String profilePicUrl = jsonResponse['profilePicture'];
           fullName = jsonResponse['username']; // Update UI with full name
-          Email = jsonResponse['email']; // Update UI with full name
-
-
-          print("Extracted Profile Picture URL: $profilePicUrl");
+          Email = jsonResponse['email']; // Update UI with email
 
           setState(() {
             _downloadUrl = profilePicUrl; // Update the image URL
           });
+
+          logger.i(" Parent profile fetched successfully.");
         } else {
-          print("Error: 'profilePicture' key is missing in the response.");
+          logger.e("profilePicture' key is missing in the response.");
         }
       } else {
-        print("❌ Failed to fetch parent details: ${response.body}");
+        logger.e("Failed to fetch parent details: ${response.statusCode} - ${response.body}");
       }
-    } catch (e) {
-      print("❌ Error fetching parent details: $e");
+    } catch (e, stackTrace) {
+      logger.e(" Error fetching parent details: $e", error: e, stackTrace: stackTrace);
     }
   }
+
 
   void UpdateForm() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     String? token = prefs.getString('access_token');
     String? Id = prefs.getString('user_id');
-
     String? googleToken = prefs.getString('google_access_token');
 
-
     var regBody = {
-
       "username": NameController.text,
       "email": EmailController.text,
-      // Assuming this is a list
-
-
     };
 
     try {
-      print('Sending request to server...');
-      print('Request Body: $regBody');
-      print('Access Token: $token');
-      print('Google Access Token: $googleToken');
-
       // Construct Cookie Header
       String cookieHeader = "";
       if (token != null && token.isNotEmpty) {
@@ -117,39 +105,45 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
       if (googleToken != null && googleToken.isNotEmpty) {
         cookieHeader += "google_access_token=$googleToken;";
       }
-      print('cookie token: $cookieHeader');
 
       var response = await http.post(
-        Uri.parse(
-            "https://1steptest.vercel.app/server/user/update/$Id"),
+        Uri.parse("https://1steptest.vercel.app/server/user/update/$Id"),
         headers: {
           "Content-Type": "application/json",
           if (cookieHeader.isNotEmpty) "Cookie": cookieHeader,
-          // Send both tokens in cookies
         },
         body: jsonEncode(regBody),
-      ).timeout(const Duration(seconds: 30)); // Reduced timeout for better UX
-
-      print('Response Status: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+      ).timeout(const Duration(seconds: 15)); // Reduced timeout for better UX
 
       // Handle the response
       if (response.statusCode == 200) {
         var jsonResponse = jsonDecode(response.body);
         String message = jsonResponse['message'] ?? "Updated successfully";
 
+        logger.i(" Profile updated: $message");
+
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(message)),
         );
+      } else {
+        logger.e(" Update failed: ${response.statusCode} - ${response.body}");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Failed to update. Try again later.")),
+        );
       }
-    } catch (e) {
-      print('Error occurred: $e');
+    } on TimeoutException catch (_) {
+      logger.e(" Request timeout");
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Request timed out. Please check your internet.")),
+      );
+    } catch (e, stackTrace) {
+      logger.e(" Error updating profile: $e", error: e, stackTrace: stackTrace);
+      print(stackTrace);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("An error occurred. Check your connection.")),
       );
     }
   }
-
   // Function to load user ID from SharedPreferences
   Future<void> _loadUserId() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();

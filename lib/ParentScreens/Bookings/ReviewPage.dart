@@ -5,7 +5,8 @@ import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-import '../AppColors.dart';
+
+import '../../AppColors.dart';
 
 class ReviewPage extends StatefulWidget {
   final String providerId;

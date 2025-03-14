@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:one_step/Screens/ChooseUser.dart';
 
 import '../AppColors.dart';
+import 'ChooseUser.dart';
 
 class OnboardingScreen extends StatefulWidget {
   @override
