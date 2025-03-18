@@ -63,8 +63,6 @@ class _ReviewPageState extends State<ReviewPage> {
       )
           .timeout(Duration(seconds: 10)); // ⏳ Timeout set to 10 seconds
 
-      print("Response Status Code: ${response.statusCode}");
-      print("Raw Response Body: ${response.body}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         var jsonResponse = jsonDecode(response.body);

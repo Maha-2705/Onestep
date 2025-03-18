@@ -111,7 +111,6 @@ class _FavouriteListScreenState extends State<FavouriteListScreen> {
         },
       );
 
-      print("Toggle Favorite Response: ${response.body}");
 
       if (response.statusCode == 200) {
         // Remove from the list after unfavorite

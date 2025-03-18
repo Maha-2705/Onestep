@@ -84,8 +84,6 @@ class _RegistrationState extends State<SignUpPage> {
     };
 
     try {
-      print('Sending request to server...');
-      print('Request Body: $regBody');
 
       var response = await http
           .post(
@@ -95,8 +93,7 @@ class _RegistrationState extends State<SignUpPage> {
       )
           .timeout(const Duration(seconds: 10));
 
-      print('Response Status: ${response.statusCode}');
-      print('Response Body: ${response.body}');
+
 
       var jsonResponse = jsonDecode(response.body);
 
@@ -122,10 +119,10 @@ class _RegistrationState extends State<SignUpPage> {
       // Start Google Sign-In
       final GoogleSignIn googleSignIn = GoogleSignIn();
 
-      // ✅ Force show account picker by signing out first
+      //  Force show account picker by signing out first
       await googleSignIn.signOut();
 
-      // ✅ Now prompt for sign-in (this will show available accounts)
+      //  Now prompt for sign-in (this will show available accounts)
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
 
 
@@ -161,13 +158,12 @@ class _RegistrationState extends State<SignUpPage> {
         options: Options(headers: {"Content-Type": "application/json"}),
       );
 
-      print("Response Status: ${response.statusCode}");
-      print("Response Body: ${response.data}");
+
 
       if (response.statusCode == 200) {
         var responseData = response.data;
 
-        // ✅ Extract cookies
+        //  Extract cookies
         List<Cookie> cookies = await cookieJar.loadForRequest(
             Uri.parse("https://1steptest.vercel.app/server/auth/google"));
         String? accessToken;
@@ -186,8 +182,7 @@ class _RegistrationState extends State<SignUpPage> {
           await storage.write(key: 'access_token', value: accessToken);
           await storage.write(key: 'refresh_token', value: refreshToken);
 
-          print("Extracted Access Token: $accessToken");
-          print("Extracted Refresh Token: $refreshToken");
+
         }
         var Id = responseData['_id'];
         SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -197,7 +192,7 @@ class _RegistrationState extends State<SignUpPage> {
         if (responseData is Map<String, dynamic>) {
           print("User data stored successfully!");
 
-          // ✅ Call Parent API
+          //  Call Parent API
           var parentResponse = await dio.get(
             "https://1steptest.vercel.app/server/parent/getParent/$Id",
             options: Options(
@@ -208,8 +203,7 @@ class _RegistrationState extends State<SignUpPage> {
             ),
           );
 
-          print("Parent API Response: ${parentResponse.data}");
-          print("Parent API Status Code: ${parentResponse.statusCode}");
+
 
           if (parentResponse.statusCode == 200 && parentResponse.data != null) {
             var parentData = parentResponse.data;
@@ -225,7 +219,7 @@ class _RegistrationState extends State<SignUpPage> {
               return;
             }
 
-            // ✅ If parentDetails exist, move to ParentDashBoard
+            // If parentDetails exist, move to ParentDashBoard
             if (parentData.containsKey("parentDetails")) {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(content: Text(
@@ -241,7 +235,7 @@ class _RegistrationState extends State<SignUpPage> {
             }
           }
 
-          // ❌ If no valid parent details, move to DetailsPage
+          //  If no valid parent details, move to DetailsPage
 
 
           Navigator.pushReplacement(

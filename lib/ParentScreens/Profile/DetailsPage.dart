@@ -108,8 +108,6 @@ class _MultiStepFormState extends State<DetailsPage> {
         body: jsonEncode(regBody),
       ).timeout(const Duration(seconds: 30)); // Reduced timeout for better UX
 
-      print('Response Status: ${response.statusCode}');
-      print('Response Body: ${response.body}');
 
       // Handle the response
       var jsonResponse = jsonDecode(response.body);

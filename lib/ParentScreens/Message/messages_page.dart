@@ -32,6 +32,8 @@ class MessagesPage extends StatefulWidget {
 }
 
 class _ChatScreenState extends State<MessagesPage> {
+  ScrollController _scrollController = ScrollController();
+
   TextEditingController _messageController = TextEditingController();
   List<Map<String, dynamic>> messages = [];
   bool isLoading = false;
@@ -43,25 +45,12 @@ class _ChatScreenState extends State<MessagesPage> {
 
     final socketService = Provider.of<SocketService>(context, listen: false);
 
-    //  Listen to incoming messages in real-time
+    // Listen to incoming messages only from the other user
     socketService.socket?.on("receiveMessage", (data) {
       if (data["provider"] == widget.providerId &&
           data["userid"] == widget.currentUserId) {
-        //  When you receive a message from another person
         if (mounted) {
-          setState(() {
-            messages.add({
-              "sender": data["sender"],
-              "message": data["message"],
-              "provider": widget.providerId,
-              "userid": widget.currentUserId,
-              "createdAt": data["createdAt"],
-            });
-
-            //  Sort messages by time (to avoid time clashes)
-            messages.sort((a, b) =>
-                DateTime.parse(a["createdAt"]).compareTo(DateTime.parse(b["createdAt"])));
-          });
+          fetchMessages(); // Fetch messages again instead of adding instantly
         }
       }
     });
@@ -104,7 +93,8 @@ class _ChatScreenState extends State<MessagesPage> {
 
         // Sort messages by time (ascending)
         sortedMessages.sort((a, b) =>
-            DateTime.parse(a["createdAt"]).compareTo(DateTime.parse(b["createdAt"])));
+            DateTime.parse(a["createdAt"]).compareTo(
+                DateTime.parse(b["createdAt"])));
 
         //  Convert UTC time to Local Time for each message
         for (var message in sortedMessages) {
@@ -117,6 +107,10 @@ class _ChatScreenState extends State<MessagesPage> {
         //  Update the message state
         setState(() {
           messages = sortedMessages;
+        });
+
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _scrollToBottom();
         });
 
         // Mark unread messages as read
@@ -165,7 +159,8 @@ class _ChatScreenState extends State<MessagesPage> {
     }
     try {
       final response = await http.put(
-        Uri.parse("https://1steptest.vercel.app/server/message/markasread/$messageId"),
+        Uri.parse(
+            "https://1steptest.vercel.app/server/message/markasread/$messageId"),
         headers: {
           "Content-Type": "application/json",
           if (cookieHeader.isNotEmpty) "Cookie": cookieHeader,
@@ -177,7 +172,6 @@ class _ChatScreenState extends State<MessagesPage> {
         //  Print full backend response
         print(" Message marked as read successfully!");
         print(" Full Backend Response: ${response.body}");
-
       } else {
         print(" Failed to mark message as read.");
         print(" Status Code: ${response.statusCode}");
@@ -213,6 +207,10 @@ class _ChatScreenState extends State<MessagesPage> {
         "userid": widget.currentUserId,
         "createdAt": timeStamp,
 
+      });
+      // Scroll to the bottom after adding the message
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scrollToBottom();
       });
       // Sort messages safely
       messages.sort((a, b) {
@@ -280,7 +278,9 @@ class _ChatScreenState extends State<MessagesPage> {
                           fontWeight: FontWeight.bold, color: Colors.white70)),
                   Text(
                     widget.isOnline ? "Online" : "Offline",
-                    style: TextStyle(color: widget.isOnline ? Colors.green : Colors.grey,fontSize: 14),
+                    style: TextStyle(
+                        color: widget.isOnline ? Colors.green : Colors.grey,
+                        fontSize: 14),
                   ),
 
                 ],
@@ -301,6 +301,8 @@ class _ChatScreenState extends State<MessagesPage> {
             children: [
               Expanded(
                 child: ListView.builder(
+                  controller: _scrollController, // Attach ScrollController
+
                   reverse: false,
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
@@ -407,5 +409,16 @@ class _ChatScreenState extends State<MessagesPage> {
         ),
       ),
     );
+  }
+
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 }

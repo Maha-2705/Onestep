@@ -74,8 +74,6 @@ class _HomePageState extends State<HomePage> {
         },
       );
 
-      print("Response Status Code: ${response.statusCode}");
-      print("Raw Response Body: ${response.body}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         var jsonResponse = jsonDecode(response.body);
@@ -161,8 +159,7 @@ class _HomePageState extends State<HomePage> {
         },
       );
 
-      print("Response Status Code: ${response.statusCode}");
-      print("Raw Response Body: ${response.body}");
+
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         var jsonResponse = jsonDecode(response.body);
@@ -171,7 +168,6 @@ class _HomePageState extends State<HomePage> {
           String profilePicUrl = jsonResponse['profilePicture'];
           fullName = jsonResponse['username']; // Update UI with full name
 
-          print("Extracted Profile Picture URL: $profilePicUrl");
 
           setState(() {
             _downloadUrl = profilePicUrl; // Update the image URL

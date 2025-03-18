@@ -10,6 +10,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:logger/logger.dart';
 
 import '../../AppColors.dart';
+import '../../Error_handling/loggerservice.dart';
 import 'ChangePasswordscreen.dart';
 
 class ProfileSettingsScreen extends StatefulWidget {
@@ -113,35 +114,19 @@ class _ProfileSettingsScreenState extends State<ProfileSettingsScreen> {
           if (cookieHeader.isNotEmpty) "Cookie": cookieHeader,
         },
         body: jsonEncode(regBody),
-      ).timeout(const Duration(seconds: 15)); // Reduced timeout for better UX
+      ).timeout(const Duration(seconds: 15));
 
-      // Handle the response
-      if (response.statusCode == 200) {
-        var jsonResponse = jsonDecode(response.body);
-        String message = jsonResponse['message'] ?? "Updated successfully";
-
-        logger.i(" Profile updated: $message");
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
-      } else {
-        logger.e(" Update failed: ${response.statusCode} - ${response.body}");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text("Failed to update. Try again later.")),
-        );
+      // Handle error responses only
+      if (response.statusCode != 200) {
+        LoggerService.logError("Update failed: ${response.statusCode} - ${response.body}");
+        LoggerService.showErrorSnackbar(context, "Failed to update. Try again later.");
       }
     } on TimeoutException catch (_) {
-      logger.e(" Request timeout");
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("Request timed out. Please check your internet.")),
-      );
+      LoggerService.logError("Request timeout");
+      LoggerService.showErrorSnackbar(context, "Request timed out. Please check your internet.");
     } catch (e, stackTrace) {
-      logger.e(" Error updating profile: $e", error: e, stackTrace: stackTrace);
-      print(stackTrace);
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text("An error occurred. Check your connection.")),
-      );
+      LoggerService.logError("Error updating profile", error: e, stackTrace: stackTrace);
+      LoggerService.showErrorSnackbar(context, "An error occurred. Check your connection.");
     }
   }
   // Function to load user ID from SharedPreferences

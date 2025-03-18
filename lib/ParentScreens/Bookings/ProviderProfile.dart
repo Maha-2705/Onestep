@@ -4,7 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../AppColors.dart';
+import '../../ParentScreens/Message/messages_page.dart';
+import '../../Socket/SocketService.dart';
 import 'Bookingslot.dart';
+import 'package:provider/provider.dart';
+
 import 'ReviewPage.dart';
 
 class DoctorProfilePage extends StatefulWidget {
@@ -17,6 +21,7 @@ class DoctorProfilePage extends StatefulWidget {
 }
 
 class _DoctorProfilePageState extends State<DoctorProfilePage> {
+
   Map<String, dynamic>? providerDetails;
   Map<String, dynamic>? providerratings;
   double totalRating = 0.0; // Store average rating
@@ -25,6 +30,7 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
 
   bool isFavorite = false;
   String userId = "";
+
 
   @override
   void initState() {
@@ -91,8 +97,6 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
       )
           .timeout(Duration(seconds: 10)); // ⏳ Timeout set to 10 seconds
 
-      print("Response Status Code: ${response.statusCode}");
-      print("Raw Response Body: ${response.body}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         var jsonResponse = jsonDecode(response.body);
@@ -142,6 +146,7 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
         setState(() {
           providerDetails = jsonDecode(response.body);
           isLoading = false;
+
         });
       } else {
         print("❌ Failed to fetch provider details: ${response.body}");
@@ -157,6 +162,9 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
   
   @override
   Widget build(BuildContext context) {
+    final socketService = Provider.of<SocketService>(context);
+    bool isOnline = socketService.isUserOnline(widget.providerId);
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -169,12 +177,33 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
       icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border, color: isFavorite ? Colors.red : Colors.grey),
       onPressed: _toggleFavorite,
     ),
-          IconButton(icon: Icon(Icons.message), onPressed: () async {
-            SharedPreferences prefs = await SharedPreferences.getInstance();
-            String? storedUserId = prefs.getString("user_id");
 
+          IconButton(
+            icon: Icon(Icons.message),
+            onPressed: () async {
+              SharedPreferences prefs = await SharedPreferences.getInstance();
+              String? storedUserId = prefs.getString("user_id");
 
-          }),
+              if (storedUserId != null) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => MessagesPage(
+                      currentUserId: storedUserId,
+                      providerId: widget.providerId,
+                      fullName: providerDetails?["fullName"],
+                      profilePicture: providerDetails?["profilePicture"],
+                      isOnline: isOnline,
+                    ),
+                  ),
+                );
+              } else {
+                // Handle case where user_id is null (optional)
+                print("User ID not found in SharedPreferences");
+              }
+            },
+          )
+
         ],
       ),
       body: isLoading
@@ -475,7 +504,6 @@ class FavoriteService {
         },
       );
 
-      print("Toggle Favorite Response: ${response.body}");
 
       if (response.statusCode == 200) {
         final jsonResponse = jsonDecode(response.body);

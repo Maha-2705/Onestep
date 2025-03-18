@@ -60,8 +60,7 @@ class _ProfilePageState extends State<ProfilePage> {
         },
       );
 
-      print("Response Status Code: ${response.statusCode}");
-      print("Raw Response Body: ${response.body}");
+
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         var jsonResponse = jsonDecode(response.body);
@@ -106,8 +105,7 @@ class _ProfilePageState extends State<ProfilePage> {
         },
       );
 
-      print("Response Status Code: ${response.statusCode}");
-      print("Raw Response Body: ${response.body}");
+
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         var jsonResponse = jsonDecode(response.body);

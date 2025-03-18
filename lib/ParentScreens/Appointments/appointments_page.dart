@@ -58,8 +58,6 @@ class _AppointmentsPageState extends State<AppointmentsPage> with SingleTickerPr
         },
       );
 
-      print("Response Status Code: ${response.statusCode}");
-      print("Raw Response Body: ${response.body}");
 
       if (response.statusCode == 200 || response.statusCode == 201) {
         var jsonResponse = jsonDecode(response.body);
@@ -101,7 +99,6 @@ class _AppointmentsPageState extends State<AppointmentsPage> with SingleTickerPr
           });
         }
 
-        print("All Appointments: $allAppointments"); // Debugging
 
         filterAppointmentsByDate(_selectedDate);
       } else {

@@ -29,7 +29,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
     });
 
     try {
-      print("📤 Sending request with email: $email");
 
       final response = await http.post(
         Uri.parse("https://1stepdev.vercel.app/server/auth/otppassword"),
@@ -37,8 +36,6 @@ class _ResetPasswordScreenState extends State<ResetPasswordScreen> {
         body: jsonEncode({"email": email}),
       );
 
-      print("🔹 Response Status Code: ${response.statusCode}");
-      print("🔹 Response Body: ${response.body}");
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);

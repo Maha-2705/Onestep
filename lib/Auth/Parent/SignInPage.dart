@@ -79,8 +79,7 @@ class _SignInPageState extends State<SignInPage> {
         options: Options(headers: {"Content-Type": "application/json"}),
       );
 
-      print("Login Response: ${response.data}");
-      print("Login Status Code: ${response.statusCode}");
+
 
       if (response.statusCode == 200) {
         var jsonResponse = response.data;
@@ -103,7 +102,7 @@ class _SignInPageState extends State<SignInPage> {
         prefs.setString('ID', loginUserId!);
         prefs.setString('access_token', accessToken ?? "");
 
-        // ✅ Call Parent API
+        //  Call Parent API
         var parentResponse = await dio.get(
           "https://1steptest.vercel.app/server/parent/getParent/$loginUserId",
           options: Options(
@@ -114,8 +113,6 @@ class _SignInPageState extends State<SignInPage> {
           ),
         );
 
-        print("Parent API Response: ${parentResponse.data}");
-        print("Parent API Status Code: ${parentResponse.statusCode}");
 
         if (parentResponse.statusCode == 200 && parentResponse.data != null) {
           var parentData = parentResponse.data;
@@ -170,10 +167,10 @@ class _SignInPageState extends State<SignInPage> {
       // Start Google Sign-In
       final GoogleSignIn googleSignIn = GoogleSignIn();
 
-      // ✅ Force show account picker by signing out first
+      //  Force show account picker by signing out first
       await googleSignIn.signOut();
 
-      // ✅ Now prompt for sign-in (this will show available accounts)
+      //  Now prompt for sign-in (this will show available accounts)
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
 
 
@@ -196,7 +193,6 @@ class _SignInPageState extends State<SignInPage> {
         "roleType": roleType,
       };
 
-      print("Google Sign-In Success: $requestBody");
 
       // Setup Dio for request and cookie handling
       final dio = Dio();
@@ -209,13 +205,11 @@ class _SignInPageState extends State<SignInPage> {
         options: Options(headers: {"Content-Type": "application/json"}),
       );
 
-      print("Response Status: ${response.statusCode}");
-      print("Response Body: ${response.data}");
 
       if (response.statusCode == 200) {
         var responseData = response.data;
 
-        // ✅ Extract cookies
+        //  Extract cookies
         List<Cookie> cookies = await cookieJar.loadForRequest(
             Uri.parse("https://1steptest.vercel.app/server/auth/google"));
         String? accessToken;
@@ -234,8 +228,7 @@ class _SignInPageState extends State<SignInPage> {
           await storage.write(key: 'access_token', value: accessToken);
           await storage.write(key: 'refresh_token', value: refreshToken);
 
-          print("Extracted Access Token: $accessToken");
-          print("Extracted Refresh Token: $refreshToken");
+
         }
         var Id = responseData['_id'];
         SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -256,8 +249,6 @@ class _SignInPageState extends State<SignInPage> {
             ),
           );
 
-          print("Parent API Response: ${parentResponse.data}");
-          print("Parent API Status Code: ${parentResponse.statusCode}");
 
           if (parentResponse.statusCode == 200 && parentResponse.data != null) {
             var parentData = parentResponse.data;

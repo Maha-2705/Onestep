@@ -54,9 +54,6 @@ class _ChangePasswordScreenState extends State<ChangePasswordScreen> {
           "newPassword": newPasswordController.text,
         }),
       );
-      print("Response Status Code: ${response.statusCode}");
-      print("Raw Response Body: ${response.body}");
-
 
       final data = jsonDecode(response.body);
 

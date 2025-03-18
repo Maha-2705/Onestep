@@ -5,6 +5,7 @@ class SocketService with ChangeNotifier {
   IO.Socket? socket;
   String? userId;
   Map<String, bool> onlineStatus = {};
+  Function(Map<String, dynamic>)? _onMessageReceived;
 
   void connect(String userId) {
     this.userId = userId;
@@ -42,11 +43,22 @@ class SocketService with ChangeNotifier {
       notifyListeners();
     });
 
+    // Listen for new messages and trigger callback if set
     // Listen for new messages
     socket?.on("receiveMessage", (data) {
       print("New Message: $data");
-      notifyListeners();
+
+      // Ensure only messages from the other user are added
+      if (data["sender"] != userId) {
+        notifyListeners();
+      }
     });
+  }
+
+
+    // Function to set message listener
+  void setOnMessageReceived(Function(Map<String, dynamic>) callback) {
+    _onMessageReceived = callback;
   }
 
   // Emit message read event
@@ -59,6 +71,7 @@ class SocketService with ChangeNotifier {
     socket?.emit("joinRoom", {
       "roomId": roomId,
       "sender": senderId,
+      "provider": receiverId,
       "reciever": receiverId,
     });
 

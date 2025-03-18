@@ -34,8 +34,7 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         "newPassword": newPassword,
       });
 
-      print("Request URL: $url");
-      print("Request Body: $body");
+
 
       var response = await http.post(
         url,
@@ -43,8 +42,6 @@ class _OtpVerificationScreenState extends State<OtpVerificationScreen> {
         body: body,
       );
 
-      print("Response Status Code: ${response.statusCode}");
-      print("Response Body: ${response.body}");
 
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(

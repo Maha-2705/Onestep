@@ -21,8 +21,8 @@ class _ChatListPageState extends State<ChatListPage> {
   String? userId;
   final Logger logger = Logger(
     printer: PrettyPrinter(
-      methodCount: 20, // Increase stacktrace depth
-      errorMethodCount: 20, // Increase error stacktrace depth
+      methodCount: 20,
+      errorMethodCount: 20,
     ),
   );
 
@@ -38,13 +38,9 @@ class _ChatListPageState extends State<ChatListPage> {
     userId = prefs.getString('user_id');
     String? googleToken = prefs.getString('google_access_token');
 
-    if (userId == null) {
-      logger.w("User ID is null, skipping message fetch.");
-      return;
-    }
+
 
     final url = "https://1steptest.vercel.app/server/message/getprovider/$userId";
-    logger.i("Fetching providers from: $url");
 
     Map<String, String> headers = {"Content-Type": "application/json"};
 
@@ -53,17 +49,14 @@ class _ChatListPageState extends State<ChatListPage> {
     if (googleToken != null && googleToken.isNotEmpty) cookieHeader += "google_access_token=$googleToken;";
     if (cookieHeader.isNotEmpty) {
       headers["Cookie"] = cookieHeader;
-      logger.d("Using Cookie Header: $cookieHeader");
     }
 
     try {
       final res = await http.get(Uri.parse(url), headers: headers);
-      logger.i("Response Status: ${res.statusCode}");
 
       if (res.statusCode == 200) {
         final List<dynamic> providers = jsonDecode(res.body);
         List<Map<String, dynamic>> updatedMessages = [];
-        logger.i("Providers fetched: ${providers.length}");
 
         for (var provider in providers) {
           String providerId = provider["_id"];
@@ -71,10 +64,10 @@ class _ChatListPageState extends State<ChatListPage> {
           String profilePicture = provider["profilePicture"] ?? "";
           String roomID = "${userId}_$providerId";
 
-          logger.d("Fetching last message for RoomID: $roomID");
 
           final lastMessageRes = await http.get(
-            Uri.parse("https://1steptest.vercel.app/server/message/getlastmessage/$roomID"),
+            Uri.parse(
+                "https://1steptest.vercel.app/server/message/getlastmessage/$roomID"),
             headers: headers,
           );
 
@@ -86,17 +79,27 @@ class _ChatListPageState extends State<ChatListPage> {
             lastMessage = lastMessageData["message"] ?? "No message yet";
             String createdAt = lastMessageData["createdAt"] ?? "";
             formattedTime = _formatTime(createdAt);
+          }
+          // Fetch unread messages count
+          final unreadCountRes = await http.get(
+            Uri.parse(
+                "https://1steptest.vercel.app/server/message/getunreadmessagescount/$roomID?reciever=$userId"),
+            headers: headers,
+          );
 
-            logger.d("Last message: $lastMessage at $formattedTime");
-          } else {
-            logger.w("Failed to fetch last message. Status: ${lastMessageRes.statusCode}");
+          int unreadCount = 0;
+          if (unreadCountRes.statusCode == 200) {
+            final unreadData = jsonDecode(unreadCountRes.body);
+            unreadCount = unreadData["unreadCount"] ?? 0;
           }
 
+          // *Add provider details to the list*
           updatedMessages.add({
             "id": providerId,
             "fullName": fullName,
             "profilePicture": profilePicture,
             "lastMessage": lastMessage,
+            "unreadCount": unreadCount,
             "time": formattedTime,
           });
         }
@@ -105,7 +108,6 @@ class _ChatListPageState extends State<ChatListPage> {
           messages = updatedMessages;
         });
 
-        logger.i("Messages fetched successfully.");
       } else {
         logger.e("Failed to fetch providers. Status: ${res.statusCode}");
       }
@@ -181,6 +183,23 @@ class _ChatListPageState extends State<ChatListPage> {
             ),
             title: Text(user["fullName"], style: TextStyle(fontWeight: FontWeight.bold)),
             subtitle: Text(user["lastMessage"], maxLines: 1, overflow: TextOverflow.ellipsis),
+              trailing: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(user["time"], style: TextStyle(fontSize: 12, color: Colors.grey)),
+                  if (user["unreadCount"] > 0)
+                    CircleAvatar(
+                      radius: 8,
+                      backgroundColor: Colors.red,
+                      child: Text(
+                        user["unreadCount"].toString(),
+
+                        style: TextStyle(color: Colors.white, fontSize: 11),
+                      ),
+                    ),
+                ],
+              ),
             onTap: () async {
               final prefs = await SharedPreferences.getInstance();
               final currentUserId = prefs.getString("user_id") ?? "";

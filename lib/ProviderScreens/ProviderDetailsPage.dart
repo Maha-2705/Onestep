@@ -106,7 +106,6 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
     String? token = prefs.getString('Access_token');
     String? googleToken = prefs.getString('Google_token');
 
-    print('Google Token: $googleToken');
 
     try {
       String? imageUrl;
@@ -137,7 +136,6 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
         formattedTimeSlots[dayMapping[key]!] = value;
       });
 
-      print("Formatted Time Slots: $formattedTimeSlots"); // Debugging
 
       final Map<String, dynamic> requestBody = {
         "userRef": widget.userId,
@@ -163,8 +161,7 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
         "timeSlots": formattedTimeSlots,
       };
 
-      print('Sending request to server...');
-      print('Request Body: $requestBody');
+
 
       String cookieHeader = "";
       if (token != null && token.isNotEmpty) {
@@ -174,7 +171,6 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
         cookieHeader += "google_access_token=$googleToken;";
       }
 
-      print('Cookie Token: $cookieHeader');
 
       var response = await http.post(
         Uri.parse("https://1steptest.vercel.app/server/provider/create"),
@@ -185,8 +181,6 @@ class _ProviderDetailsPageState extends State<ProviderDetailsPage> {
         body: jsonEncode(requestBody),
       ).timeout(const Duration(seconds: 30));
 
-      print('Response Status: ${response.statusCode}');
-      print('Response Body: ${response.body}');
 
       var jsonResponse = jsonDecode(response.body);
       if (response.statusCode == 201 && jsonResponse['success'] == true) {

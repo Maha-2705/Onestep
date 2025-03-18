@@ -54,14 +54,12 @@ class _SearchPageState extends State<SearchPage> {
         'address': city,
       });
 
-      print('Fetching data from: $url'); // Debugging log
 
       try {
         final response = await http.get(url);
 
         if (response.statusCode == 200) {
           var data = json.decode(response.body);
-          print('Response Data: $data'); // Debugging log
 
           if (mounted) {
             setState(() {
@@ -304,7 +302,6 @@ class _SearchPageState extends State<SearchPage> {
           },
         );
 
-        print("Fetch Status Response: ${response.body}");
 
         if (response.statusCode == 200) {
           final Map<String, dynamic> responseData = jsonDecode(response.body);
@@ -346,7 +343,6 @@ class _SearchPageState extends State<SearchPage> {
           },
         );
 
-        print("Toggle Favorite Response: ${response.body}");
 
         if (response.statusCode == 200) {
           isFavorite.value = !isFavorite.value; // Toggle favorite state
