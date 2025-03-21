@@ -159,7 +159,12 @@ class _ReviewPageState extends State<ReviewPage> {
           .timeout(Duration(seconds: 10)); // ⏳ Timeout set to 10 seconds
 
       if (response.statusCode == 200 || response.statusCode == 201) {
-        print("✅ Rating updated successfully!");
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("✅ Rating updated successfully!"),
+            duration: Duration(seconds: 2),
+          ),
+        );
         fetchratings();
       } else {
         print("❌ Failed to update rating: ${response.body}");

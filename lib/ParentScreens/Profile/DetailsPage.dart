@@ -84,10 +84,6 @@ class _MultiStepFormState extends State<DetailsPage> {
     };
 
     try {
-      print('Sending request to server...');
-      print('Request Body: $regBody');
-      print('Access Token: $token');
-      print('Google Access Token: $googleToken');
 
       // Construct Cookie Header
       String cookieHeader = "";
@@ -227,8 +223,9 @@ class _MultiStepFormState extends State<DetailsPage> {
 
 Widget buildPhysicalInfoPage() {
     return buildPage("Physical Information", [
-      buildTextField("Height (in cm)", heightController),
-      buildTextField("Weight (in kg)", weightController),
+      buildTextFields("Height (in cm)", heightController, isNumeric: true),
+      buildTextFields("Weight (in kg)", weightController, isNumeric: true),
+
       buildTextField("Blood Group", bloodGroupController),
       SizedBox(height: 20),
 
@@ -242,7 +239,7 @@ Widget buildPhysicalInfoPage() {
 
       buildTextField("Allergies", allergiesController),
       SizedBox(height: 10),
-      buildTextField("Emergency Contact", EmergencyController, maxLines: 1),
+      buildTextFields("Emergency Contact", EmergencyController, maxLines: 1,isNumeric: true),
 
       SizedBox(height: 10),
 
@@ -475,6 +472,56 @@ Widget buildPhysicalInfoPage() {
     );
   }
 
+
+  Widget buildTextFields(
+      String label,
+      TextEditingController controller, {
+        String? hintText,
+        int maxLines = 1,
+        bool isNumeric = false, // ✅ Added numeric flag
+      }) {
+    return Padding(
+      padding: EdgeInsets.symmetric(vertical: 10.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            label,
+            style: TextStyle(fontSize: 16, fontFamily: 'afacad'),
+          ),
+          SizedBox(height: 5),
+          Container(
+            height: 45, // Set the height for the field
+            decoration: BoxDecoration(
+              color: AppColors.textfieldcolor, // Light grey background
+              borderRadius: BorderRadius.circular(5), // Rounded corners
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black12, // Shadow color
+                  blurRadius: 4, // Blur intensity
+                  offset: Offset(2, 2), // Shadow position
+                ),
+              ],
+            ),
+            child: TextField(
+              controller: controller,
+              keyboardType: isNumeric ? TextInputType.number : TextInputType.text, // ✅ Numeric input
+              inputFormatters: isNumeric ? [FilteringTextInputFormatter.digitsOnly] : [], // ✅ Digits only
+              decoration: InputDecoration(
+                hintText: hintText,
+                labelStyle: TextStyle(fontFamily: 'afacad'),
+                filled: true,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(5), borderSide: BorderSide.none),
+                fillColor: AppColors.textfieldcolor, // Light grey background
+                contentPadding: EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+              ),
+              maxLines: maxLines,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget buildServiceSelectionField() {
     return Column(

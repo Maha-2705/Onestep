@@ -5,9 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:geolocator/geolocator.dart';
-import 'package:geocoding/geocoding.dart';
+
 
 import '../../AppColors.dart';
 import '../../ParentScreens/Search/search_page.dart';
@@ -446,29 +444,13 @@ class _TopDoctorsSectionState extends State<TopDoctorsSection> {
   @override
   void initState() {
     super.initState();
-    _getCurrentLocation(); // Fetch current city
+    _fetchDoctors(specialties.first, currentCity); // Fetch default if error
+
   }
 
-  /// **Fetch Current Location**
-  Future<void> _getCurrentLocation() async {
-    try {
-      Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
-      List<Placemark> placemarks =
-      await placemarkFromCoordinates(position.latitude, position.longitude);
-      if (placemarks.isNotEmpty) {
-        setState(() {
-          currentCity =
-              placemarks[0].subAdministrativeArea ?? "Chennai"; // District Name
-        });
-        _fetchDoctors(
-            specialties.first, currentCity); // Fetch default specialty data
-      }
-    } catch (e) {
-      print("Error getting location: $e");
-      _fetchDoctors(specialties.first, currentCity); // Fetch default if error
-    }
-  }
+
+
+
 
   /// **Fetch Doctors Based on Specialty & City**
   Future<void> _fetchDoctors(String specialty, String city) async {

@@ -67,12 +67,12 @@ class SocketService with ChangeNotifier {
   }
 
   // Send message to the server
-  void sendMessage(String roomId, String message, String senderId, String receiverId) {
+  void sendMessage(String roomId, String message, String senderId, String receiverId, String userRef) {
     socket?.emit("joinRoom", {
       "roomId": roomId,
       "sender": senderId,
       "provider": receiverId,
-      "reciever": receiverId,
+      "reciever": userRef,
     });
 
     socket?.emit("sendMessage", {
@@ -81,7 +81,7 @@ class SocketService with ChangeNotifier {
       "sender": senderId,
       "provider": receiverId,
       "userid": senderId,
-      "reciever": receiverId,
+      "reciever": userRef,
     });
   }
 

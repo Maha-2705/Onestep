@@ -103,6 +103,15 @@ class _BookingPageState extends State<BookSlotPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("✅ Successfully Booked...")),
         );
+        nameController.clear();
+        emailController.clear();
+        noteController.clear();
+        selectedService = null;
+        selectedSessionType = null;
+        selectedTimeIndex = -1;
+
+        // ✅ Refresh UI
+        setState(() {});
       } else {
         print("Failed: ${response.statusCode} - ${response.body}");
       }

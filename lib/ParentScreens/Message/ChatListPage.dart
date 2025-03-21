@@ -6,7 +6,6 @@ import 'package:one_step/AppColors.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:logger/logger.dart';
-
 import '../../ParentScreens/Message/messages_page.dart';
 import '../../Socket/SocketService.dart';
 
@@ -38,8 +37,6 @@ class _ChatListPageState extends State<ChatListPage> {
     userId = prefs.getString('user_id');
     String? googleToken = prefs.getString('google_access_token');
 
-
-
     final url = "https://1steptest.vercel.app/server/message/getprovider/$userId";
 
     Map<String, String> headers = {"Content-Type": "application/json"};
@@ -62,12 +59,14 @@ class _ChatListPageState extends State<ChatListPage> {
           String providerId = provider["_id"];
           String fullName = provider["fullName"] ?? "Unknown";
           String profilePicture = provider["profilePicture"] ?? "";
+          String userRef = provider["userRef"] ?? ""; // Add userRef from provider data
           String roomID = "${userId}_$providerId";
 
+          print("Response Status Code: ${res.statusCode}");
+          print("Response Body: ${res.body}");
 
           final lastMessageRes = await http.get(
-            Uri.parse(
-                "https://1steptest.vercel.app/server/message/getlastmessage/$roomID"),
+            Uri.parse("https://1steptest.vercel.app/server/message/getlastmessage/$roomID"),
             headers: headers,
           );
 
@@ -80,10 +79,10 @@ class _ChatListPageState extends State<ChatListPage> {
             String createdAt = lastMessageData["createdAt"] ?? "";
             formattedTime = _formatTime(createdAt);
           }
+
           // Fetch unread messages count
           final unreadCountRes = await http.get(
-            Uri.parse(
-                "https://1steptest.vercel.app/server/message/getunreadmessagescount/$roomID?reciever=$userId"),
+            Uri.parse("https://1steptest.vercel.app/server/message/getunreadmessagescount/$roomID?reciever=$userId"),
             headers: headers,
           );
 
@@ -93,7 +92,7 @@ class _ChatListPageState extends State<ChatListPage> {
             unreadCount = unreadData["unreadCount"] ?? 0;
           }
 
-          // *Add provider details to the list*
+          // Add provider details to the list, including userRef
           updatedMessages.add({
             "id": providerId,
             "fullName": fullName,
@@ -101,6 +100,7 @@ class _ChatListPageState extends State<ChatListPage> {
             "lastMessage": lastMessage,
             "unreadCount": unreadCount,
             "time": formattedTime,
+            "userRef": userRef, // Added userRef here
           });
         }
 
@@ -115,6 +115,7 @@ class _ChatListPageState extends State<ChatListPage> {
       logger.e("Error fetching messages: $e", error: e, stackTrace: stackTrace);
     }
   }
+
   String _formatTime(String timestamp) {
     if (timestamp.isEmpty) return "";
     try {
@@ -212,6 +213,7 @@ class _ChatListPageState extends State<ChatListPage> {
                   providerId: user["id"],
                   fullName: user["fullName"],
                   profilePicture: user["profilePicture"],
+                  userRef:user["userRef"],
                   isOnline: isOnline,
     ),
     ),

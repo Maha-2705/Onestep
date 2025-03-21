@@ -152,6 +152,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
 
       // Handle the response
       if (response.statusCode == 200) {
+
         var jsonResponse = jsonDecode(response.body);
         String message = jsonResponse['message'] ?? "Parent details updated successfully";
 

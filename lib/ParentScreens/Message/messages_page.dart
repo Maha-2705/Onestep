@@ -15,6 +15,8 @@ class MessagesPage extends StatefulWidget {
   final String providerId;
   final String profilePicture;
   final String fullName;
+  final String userRef;
+
   final bool isOnline; // Add this parameter
 
 
@@ -23,6 +25,7 @@ class MessagesPage extends StatefulWidget {
     required this.providerId,
     required this.profilePicture,
     required this.fullName,
+    required this.userRef,
     required this.isOnline, // Accept it here
 
   });
@@ -196,6 +199,7 @@ class _ChatScreenState extends State<MessagesPage> {
       messageText,
       widget.currentUserId,
       widget.providerId,
+      widget.userRef
     );
 
     // Instantly show the message in your chat

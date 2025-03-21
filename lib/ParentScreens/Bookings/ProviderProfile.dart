@@ -142,11 +142,13 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
       )
           .timeout(Duration(seconds: 10)); // ⏳ Timeout set to 10 seconds
 
+      print("Response Status Code: ${response.statusCode}");
+      print("Response Body: ${response.body}");
+
       if (response.statusCode == 200 || response.statusCode == 201) {
         setState(() {
           providerDetails = jsonDecode(response.body);
           isLoading = false;
-
         });
       } else {
         print("❌ Failed to fetch provider details: ${response.body}");
@@ -159,7 +161,7 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
       }
     }
   }
-  
+
   @override
   Widget build(BuildContext context) {
     final socketService = Provider.of<SocketService>(context);
@@ -193,6 +195,7 @@ class _DoctorProfilePageState extends State<DoctorProfilePage> {
                       providerId: widget.providerId,
                       fullName: providerDetails?["fullName"],
                       profilePicture: providerDetails?["profilePicture"],
+                      userRef: providerDetails?["userRef"],
                       isOnline: isOnline,
                     ),
                   ),
